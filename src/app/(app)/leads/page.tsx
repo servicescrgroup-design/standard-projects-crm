@@ -122,7 +122,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
             <li key={l.id}>
               <Link href={`/leads/${l.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 hover:bg-slate-50">
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{l.company}</div>
+                  <div className="truncate font-medium">
+                    {l.company}
+                    {l.source !== "MANUAL" && (
+                      <span className="chip ml-2 bg-indigo-50 text-indigo-700">
+                        {l.source === "QUOTE" ? "Quote request" : "Website"}
+                      </span>
+                    )}
+                  </div>
                   <div className="truncate text-sm text-slate-500">{[l.contactName, l.industry].filter(Boolean).join(" · ")}</div>
                 </div>
                 <span className="chip">{STAGE_LABELS[l.stage as Stage] ?? l.stage}</span>
