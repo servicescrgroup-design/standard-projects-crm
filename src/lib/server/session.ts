@@ -8,15 +8,17 @@ import { passwordStamp, readSession, signSession, SESSION_DAYS } from "../auth";
 export const SESSION_COOKIE = "spcrm_session";
 
 /**
- * Key for signing sign-in cookies. Uses SESSION_SECRET if set; otherwise derives one from the
- * Supabase JWT secret that Vercel's Supabase integration provides, so no extra setup is needed.
+ * Key for signing sign-in cookies. Uses SESSION_SECRET if set; otherwise derives one from a
+ * server-only secret that's already configured (Supabase integration key or the database URL),
+ * so no extra setup is needed. Changing that underlying secret signs everyone out.
  */
 export function sessionSecret(): string {
   const explicit = process.env.SESSION_SECRET;
   if (explicit && explicit.length >= 32) return explicit;
-  const base = process.env.SUPABASE_JWT_SECRET;
-  if (base && base.length >= 32) return createHmac("sha256", base).update("spcrm-session-v1").digest("base64url");
-  throw new Error("Set SESSION_SECRET (32+ characters) or connect the Supabase integration");
+  const base =
+    process.env.SUPABASE_SECRET_KEY || process.env.POSTGRES_PASSWORD || process.env.POSTGRES_PRISMA_URL || "";
+  if (base.length >= 16) return createHmac("sha256", base).update("spcrm-session-v1").digest("base64url");
+  throw new Error("Set SESSION_SECRET (32+ characters) or the database connection variables");
 }
 
 export async function startSession(user: { id: string; passwordHash: string }) {
