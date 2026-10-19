@@ -1,4 +1,5 @@
-// Postgres (Supabase). DATABASE_URL = pooled connection for the app; DIRECT_URL = direct connection for migrations.
+// Postgres (Supabase). Variable names match Vercel's Supabase integration, which sets them automatically:
+// POSTGRES_PRISMA_URL = pooled connection for the app; POSTGRES_URL_NON_POOLING = direct, for migrations.
 // Enum-like fields are strings validated in src/lib/domain.ts.
 
 generator client {
@@ -7,8 +8,8 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
 model Team {
