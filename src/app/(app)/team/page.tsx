@@ -29,7 +29,7 @@ const STANDARD_GOALS: { metric: GoalMetric; period: "WEEK" | "MONTH" }[] = [
 ];
 
 function Bar({ pct }: { pct: number }) {
-  const colour = pct >= 100 ? "bg-emerald-500" : pct >= 60 ? "bg-blue-500" : pct >= 30 ? "bg-amber-400" : "bg-rose-400";
+  const colour = pct >= 100 ? "bg-emerald-500" : pct >= 60 ? "bg-green-500" : pct >= 30 ? "bg-amber-400" : "bg-rose-400";
   return (
     <div className="h-1.5 w-full rounded-full bg-slate-100">
       <div className={`h-1.5 rounded-full ${colour}`} style={{ width: `${Math.max(pct, 2)}%` }} />
@@ -157,7 +157,7 @@ export default async function TeamPage() {
           <p className="mt-1 text-sm text-slate-500">
             {user.role === "OWNER" ? (
               <>
-                Create a team and add your reps in <Link href="/settings" className="text-blue-700 hover:underline">Settings</Link>.
+                Create a team and add your reps in <Link href="/settings" className="text-green-700 hover:underline">Settings</Link>.
               </>
             ) : (
               "Ask the owner to add people to your team."
@@ -223,7 +223,7 @@ export default async function TeamPage() {
                               className="w-16 rounded border border-slate-200 px-1.5 py-0.5 text-right tabular-nums"
                               aria-label={`${GOAL_LABELS[metric]} goal for ${r.person.name}`}
                             />
-                            <button className="text-xs text-blue-700 hover:underline">Set</button>
+                            <button className="text-xs text-green-700 hover:underline">Set</button>
                           </form>
                         ) : (
                           <span className="tabular-nums">
@@ -251,7 +251,7 @@ export default async function TeamPage() {
                 <span>{STAGE_LABELS[s.stage]}</span>
                 <div className="h-2 rounded-full bg-slate-100">
                   <div
-                    className={`h-2 rounded-full ${s.stage === "WON" ? "bg-emerald-500" : s.stage === "LOST" ? "bg-slate-400" : "bg-blue-500"}`}
+                    className={`h-2 rounded-full ${s.stage === "WON" ? "bg-emerald-500" : s.stage === "LOST" ? "bg-slate-400" : "bg-green-500"}`}
                     style={{ width: `${(s.count / maxCount) * 100}%` }}
                   />
                 </div>

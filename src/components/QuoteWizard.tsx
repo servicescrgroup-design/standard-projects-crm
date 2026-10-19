@@ -100,7 +100,7 @@ function Choice({
   return (
     <label
       className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition ${
-        checked ? "border-blue-600 bg-blue-50 text-blue-900" : "border-slate-200 bg-white hover:border-slate-300"
+        checked ? "border-green-600 bg-green-50 text-green-900" : "border-white/80 bg-white/70 hover:bg-white/90"
       }`}
     >
       <input
@@ -109,7 +109,7 @@ function Choice({
         value={option.value}
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 shrink-0 accent-blue-600"
+        className="h-4 w-4 shrink-0 accent-green-600"
       />
       <span lang={lang}>{lang === "th" ? option.th : option.value}</span>
     </label>
@@ -224,7 +224,7 @@ export function QuoteWizard({ initialLang }: { initialLang: Lang }) {
         </div>
         <div className="h-1.5 rounded-full bg-slate-100">
           <div
-            className="h-1.5 rounded-full bg-blue-600 transition-all"
+            className="h-1.5 rounded-full bg-green-600 transition-all"
             style={{ width: `${((step + 1) / STEP_FIELDS.length) * 100}%` }}
           />
         </div>

@@ -37,7 +37,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       </div>
 
       <details className="card group p-4">
-        <summary className="cursor-pointer list-none font-medium text-blue-700">+ Add lead</summary>
+        <summary className="cursor-pointer list-none font-medium text-green-700">+ Add lead</summary>
         <form action={createLead} className="mt-4 grid gap-3 sm:grid-cols-2">
           <div>
             <label className="label">Company name *</label>
