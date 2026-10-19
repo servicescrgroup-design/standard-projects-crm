@@ -1,6 +1,28 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "crm", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 3000 }
+    {
+      "name": "crm",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "website",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "/Users/richardjones/Desktop/Standard Projects/standard-projects",
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "3100"
+      ],
+      "port": 3100
+    }
   ]
 }

@@ -55,6 +55,10 @@ const T = {
     th: "เราจะติดต่อกลับภายในหนึ่งวันทำการ",
   },
   needBoth: { en: "Please answer both questions", th: "กรุณาตอบทั้งสองข้อ" },
+  unavailable: {
+    en: "Sorry, we can't receive requests right now. Please email services.crgroup@gmail.com instead.",
+    th: "ขออภัย ขณะนี้ระบบยังรับคำขอไม่ได้ กรุณาส่งอีเมลถึง services.crgroup@gmail.com",
+  },
   rateLimited: {
     en: "Too many requests from your connection. Please try again later.",
     th: "มีการส่งคำขอจากเครือข่ายของคุณมากเกินไป กรุณาลองใหม่ภายหลัง",
@@ -314,7 +318,7 @@ export function QuoteWizard({ initialLang }: { initialLang: Lang }) {
       </section>
 
       {(stepError || state.error) && (
-        <p className="mt-4 text-sm text-rose-600">{stepError || (state.error === "rateLimited" ? T.rateLimited[lang] : state.error)}</p>
+        <p className="mt-4 text-sm text-rose-600">{stepError || (state.error ? T[state.error][lang] : null)}</p>
       )}
 
       <div className="mt-6 flex items-center justify-between">

@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "./db";
+import { isDbConfigured } from "./config";
 import { passwordStamp, readSession, signSession, SESSION_DAYS } from "../auth";
 
 export const SESSION_COOKIE = "spcrm_session";
@@ -36,6 +37,7 @@ export async function endSession() {
 }
 
 export async function getCurrentUser() {
+  if (!isDbConfigured()) return null;
   const session = readSession((await cookies()).get(SESSION_COOKIE)?.value, sessionSecret());
   if (!session) return null;
   const user = await db.user.findUnique({ where: { id: session.userId } });

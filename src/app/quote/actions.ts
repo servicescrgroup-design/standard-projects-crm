@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { db } from "@/lib/server/db";
+import { isDbConfigured } from "@/lib/server/config";
 import {
   parseQuoteForm,
   quoteSummary,
@@ -11,7 +12,7 @@ import {
   type QuoteErrorCode,
 } from "@/lib/quote";
 
-export type QuoteResult = { ok?: boolean; errors?: Partial<Record<keyof QuoteAnswers, QuoteErrorCode>>; error?: "rateLimited" };
+export type QuoteResult = { ok?: boolean; errors?: Partial<Record<keyof QuoteAnswers, QuoteErrorCode>>; error?: "rateLimited" | "unavailable" };
 
 const MAX_PER_HOUR = 5;
 
@@ -26,6 +27,8 @@ export async function submitQuote(_prev: QuoteResult, fd: FormData): Promise<Quo
   const answers = parseQuoteForm(fd);
   const errors = validateQuote(answers);
   if (Object.keys(errors).length > 0) return { errors };
+
+  if (!isDbConfigured()) return { error: "unavailable" };
 
   const h = await headers();
   const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
