@@ -1,0 +1,8 @@
+.env
+.env.local
+prisma/*.db
+owner-setup-link.txt
+.next
+.next-dev
+.claude
+node_modules
