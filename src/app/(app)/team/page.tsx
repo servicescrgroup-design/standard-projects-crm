@@ -10,7 +10,7 @@ import {
   STAGES,
   STAGE_LABELS,
   STALLED_AFTER_DAYS,
-  formatGBP,
+  formatMoney,
   startOfMonth,
   startOfWeek,
   type GoalMetric,
@@ -141,7 +141,7 @@ export default async function TeamPage() {
           ["Calls this week", totals.calls],
           ["Emails this week", totals.emails],
           ["Meetings this week", totals.meetings],
-          ["Won this month", `£${totals.won.toLocaleString("en-GB")}`],
+          ["Won this month", `฿${totals.won.toLocaleString("en-GB")}`],
           ...(isRep ? [] : [["Unassigned leads", unassigned] as [string, number]]),
         ].map(([k, v]) => (
           <div key={k} className="card p-4">
@@ -196,7 +196,7 @@ export default async function TeamPage() {
                 <div className="flex gap-2 text-xs">
                   <span className="chip">{r.open} open</span>
                   {r.overdue > 0 && <span className="chip bg-amber-50 text-amber-700">{r.overdue} overdue</span>}
-                  <span className="chip">{formatGBP(r.pipeline)} pipeline</span>
+                  <span className="chip">{formatMoney(r.pipeline)} pipeline</span>
                 </div>
               </div>
               <div className="mt-4 space-y-3">
@@ -256,7 +256,7 @@ export default async function TeamPage() {
                   />
                 </div>
                 <span className="text-right font-semibold tabular-nums">{s.count}</span>
-                <span className="text-right tabular-nums text-slate-500">{formatGBP(s.value)}</span>
+                <span className="text-right tabular-nums text-slate-500">{formatMoney(s.value)}</span>
               </li>
             ))}
           </ul>

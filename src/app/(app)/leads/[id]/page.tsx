@@ -145,11 +145,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             )}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">One-off (£)</label>
+                <label className="label">One-off (฿)</label>
                 <input name="value" defaultValue={pounds(lead.value)} inputMode="decimal" className="input" />
               </div>
               <div>
-                <label className="label">Monthly (£)</label>
+                <label className="label">Monthly (฿)</label>
                 <input name="monthlyValue" defaultValue={pounds(lead.monthlyValue)} inputMode="decimal" className="input" />
               </div>
             </div>

@@ -48,7 +48,7 @@ export const GOAL_LABELS: Record<GoalMetric, string> = {
   EMAILS: "Emails sent",
   MEETINGS: "Meetings",
   DEALS_WON: "Deals won",
-  REVENUE_WON: "Revenue won (£)",
+  REVENUE_WON: "Revenue won (฿)",
 };
 
 /** Days until the next follow-up after an unanswered touch, per stage. */
@@ -84,10 +84,18 @@ export function stageIndex(s: Stage): number {
   return STAGES.indexOf(s);
 }
 
-export function formatGBP(pence: number): string {
-  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(
-    pence / 100,
-  );
+/** All money is stored in the currency's minor unit (satang for baht) as integers. */
+export const CURRENCY = "THB";
+export const CURRENCY_SYMBOL = "฿";
+
+export function formatMoney(minor: number): string {
+  return `${CURRENCY_SYMBOL}${Math.round(minor / 100).toLocaleString("en-GB")}`;
+}
+
+/** Parses what someone typed ("฿30,000", "30000", "1,250.50") into minor units; 0 if not a positive number. */
+export function toMinor(raw: string): number {
+  const n = Number(raw.replace(/[฿£$,\s]/g, ""));
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
 }
 
 export function startOfWeek(now: Date): Date {

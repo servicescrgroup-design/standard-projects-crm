@@ -37,7 +37,7 @@ Want to try it with fictional people and companies? Run `npm run db:demo`. `npm 
 ### Website enquiries and the quote form
 
 - **Existing website form:** a database trigger copies every new row in `public.inquiries` (the standardprojects.org contact form) into an unassigned **New** lead, due now, with the message logged as a note (`prisma/migrations/0002_website_inquiries`).
-- **Get a quote:** `/quote` is a public 4-step questionnaire (services → business → budget and timing → contact). Each request becomes an unassigned lead tagged "Quote request", with every answer in a note and the budget used as an estimated value so it ranks properly in Today. If the email matches an existing lead, the request is added to that lead instead. It has spam protection (a hidden honeypot field and 5 requests per hour per IP).
+- **Get a quote:** `/quote` is a public 4-step questionnaire in English and Thai (services → business → budget and timing → contact, with LINE as a contact option). Each request becomes an unassigned lead tagged "Quote request", with every answer in a note and the budget (in baht) used as an estimated value so it ranks properly in Today. If the email matches an existing lead, the request is added to that lead instead. It has spam protection (a hidden honeypot field and 5 requests per hour per IP).
   - Link to it: `https://standard-projects-crm.vercel.app/quote`
   - Or embed it: `<iframe src="https://standard-projects-crm.vercel.app/quote?embed=1" style="width:100%;height:760px;border:0"></iframe>`
 

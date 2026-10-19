@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/server/session";
 import { db } from "@/lib/server/db";
 import { leadScope, teamScope } from "@/lib/access";
-import { STAGES, STAGE_LABELS, formatGBP, isStage, type Stage } from "@/lib/domain";
+import { STAGES, STAGE_LABELS, formatMoney, isStage, type Stage } from "@/lib/domain";
 import { createLead } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -64,11 +64,11 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
             <input name="industry" className="input" placeholder="Construction & property" />
           </div>
           <div>
-            <label className="label">One-off value (£)</label>
+            <label className="label">One-off value (฿)</label>
             <input name="value" inputMode="decimal" className="input" />
           </div>
           <div>
-            <label className="label">Monthly value (£)</label>
+            <label className="label">Monthly value (฿)</label>
             <input name="monthlyValue" inputMode="decimal" className="input" />
           </div>
           {isManager && (
@@ -134,7 +134,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                 </div>
                 <span className="chip">{STAGE_LABELS[l.stage as Stage] ?? l.stage}</span>
                 <span className="w-24 text-right text-sm tabular-nums text-slate-600">
-                  {l.monthlyValue ? `${formatGBP(l.monthlyValue)}/mo` : l.value ? formatGBP(l.value) : "—"}
+                  {l.monthlyValue ? `${formatMoney(l.monthlyValue)}/mo` : l.value ? formatMoney(l.value) : "—"}
                 </span>
                 {isManager && (
                   <span className={`w-28 truncate text-right text-sm ${l.owner ? "text-slate-600" : "font-medium text-amber-700"}`}>

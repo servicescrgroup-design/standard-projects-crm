@@ -2,9 +2,16 @@
 
 import { headers } from "next/headers";
 import { db } from "@/lib/server/db";
-import { parseQuoteForm, quoteSummary, quoteToLead, validateQuote, type QuoteAnswers } from "@/lib/quote";
+import {
+  parseQuoteForm,
+  quoteSummary,
+  quoteToLead,
+  validateQuote,
+  type QuoteAnswers,
+  type QuoteErrorCode,
+} from "@/lib/quote";
 
-export type QuoteResult = { ok?: boolean; errors?: Partial<Record<keyof QuoteAnswers, string>>; error?: string };
+export type QuoteResult = { ok?: boolean; errors?: Partial<Record<keyof QuoteAnswers, QuoteErrorCode>>; error?: "rateLimited" };
 
 const MAX_PER_HOUR = 5;
 
@@ -24,7 +31,7 @@ export async function submitQuote(_prev: QuoteResult, fd: FormData): Promise<Quo
   const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
   const key = `quote:${ip}`;
   const recent = await db.loginAttempt.count({ where: { email: key, createdAt: { gte: new Date(Date.now() - 3600_000) } } });
-  if (recent >= MAX_PER_HOUR) return { error: "Too many requests from your connection. Please try again later." };
+  if (recent >= MAX_PER_HOUR) return { error: "rateLimited" };
   await db.loginAttempt.create({ data: { email: key } });
 
   const fields = quoteToLead(answers);

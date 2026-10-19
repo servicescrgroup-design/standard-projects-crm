@@ -1,4 +1,4 @@
-import { DAY_MS, MAX_UNANSWERED_TOUCHES, OPEN_STAGES, endOfDay, formatGBP, type Stage } from "./domain";
+import { DAY_MS, MAX_UNANSWERED_TOUCHES, OPEN_STAGES, endOfDay, formatMoney, type Stage } from "./domain";
 
 export type QueueLead = {
   id: string;
@@ -52,11 +52,11 @@ export function scoreLead<T extends QueueLead>(lead: T, now: Date): QueueItem<T>
 
   score += STAGE_WEIGHT[lead.stage as Stage] ?? 0;
 
-  // Annualise recurring revenue so £100/mo outranks a £500 one-off.
-  const dealPence = lead.value + lead.monthlyValue * 12;
-  if (dealPence > 0) {
-    score += Math.min(25, dealPence / 100 / 200);
-    reasons.push(lead.monthlyValue > 0 ? `${formatGBP(lead.monthlyValue)}/mo` : formatGBP(lead.value));
+  // Annualise recurring revenue so ฿3,000/mo outranks a ฿20,000 one-off. A ฿200k+ deal earns the full 25.
+  const dealMinor = lead.value + lead.monthlyValue * 12;
+  if (dealMinor > 0) {
+    score += Math.min(25, dealMinor / 100 / 8000);
+    reasons.push(lead.monthlyValue > 0 ? `${formatMoney(lead.monthlyValue)}/mo` : formatMoney(lead.value));
   }
 
   if (lead.nextFollowUpAt) {

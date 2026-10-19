@@ -25,6 +25,7 @@ import {
   isOutcome,
   isRole,
   isStage,
+  toMinor,
   type GoalMetric,
   type GoalPeriod,
 } from "@/lib/domain";
@@ -33,10 +34,6 @@ function str(fd: FormData, key: string): string {
   return String(fd.get(key) ?? "").trim();
 }
 
-function poundsToPence(raw: string): number {
-  const n = Number(raw.replace(/[£,\s]/g, ""));
-  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
-}
 
 /** "1", "3", "7", "14" = days from now; otherwise a yyyy-mm-dd date; empty = let the cadence decide. */
 function parseFollowUp(raw: string): Date | null {
@@ -175,8 +172,8 @@ export async function createLead(fd: FormData) {
       location: str(fd, "location") || null,
       industry: str(fd, "industry") || null,
       serviceInterest: str(fd, "serviceInterest") || null,
-      value: poundsToPence(str(fd, "value")),
-      monthlyValue: poundsToPence(str(fd, "monthlyValue")),
+      value: toMinor(str(fd, "value")),
+      monthlyValue: toMinor(str(fd, "monthlyValue")),
       ownerId,
       nextFollowUpAt: parseFollowUp(str(fd, "followUp")),
     },
@@ -193,8 +190,8 @@ export async function updateLead(fd: FormData) {
     email: str(fd, "email").toLowerCase() || null,
     phone: str(fd, "phone") || null,
     website: str(fd, "website") || null,
-    value: poundsToPence(str(fd, "value")),
-    monthlyValue: poundsToPence(str(fd, "monthlyValue")),
+    value: toMinor(str(fd, "value")),
+    monthlyValue: toMinor(str(fd, "monthlyValue")),
   };
 
   const stage = str(fd, "stage");

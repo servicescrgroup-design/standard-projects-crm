@@ -32,7 +32,7 @@ async function main() {
   const reps = [lead, rep1, rep2];
 
   const companies: [string, string, string, number, number][] = [
-    // company, industry, stage, value (£), monthly (£)
+    // company, industry, stage, value (฿), monthly (฿)
     ["Northgate Roofing Ltd", "Construction & property", "PROPOSAL_SENT", 2499, 49],
     ["Brightwell Electrical", "Trades", "PROPOSAL_SENT", 1800, 0],
     ["Hartley Groundworks", "Construction & property", "MEETING_BOOKED", 3200, 79],
