@@ -4,6 +4,7 @@ import { db } from "@/lib/server/db";
 import { canManagePeople } from "@/lib/access";
 import { OPEN_STAGES } from "@/lib/domain";
 import { AddPersonForm, CreateTeamForm, PersonRow, TeamRow } from "@/components/SettingsForms";
+import { ImportLeads } from "@/components/ImportLeads";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,15 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Settings</h1>
         <p className="text-sm text-slate-500">Set up your teams and who can see what.</p>
       </div>
+
+      <section className="card p-4">
+        <h2 className="font-semibold">Import leads</h2>
+        <p className="mb-3 text-sm text-slate-500">
+          Upload a Notion &ldquo;Customers CRM&rdquo; export (.json). New leads arrive unassigned; leads already in the CRM are
+          skipped, so importing the same file twice is safe.
+        </p>
+        <ImportLeads />
+      </section>
 
       <section className="card">
         <div className="border-b border-slate-100 px-4 py-3">

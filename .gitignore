@@ -46,3 +46,6 @@ next-env.d.ts
 prisma/*.db
 prisma/*.db-journal
 owner-setup-link.txt
+
+# exported customer data, never commit
+/imports/
