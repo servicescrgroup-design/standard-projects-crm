@@ -1,0 +1,115 @@
+// Postgres (Supabase). DATABASE_URL = pooled connection for the app; DIRECT_URL = direct connection for migrations.
+// Enum-like fields are strings validated in src/lib/domain.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Team {
+  id    String @id @default(cuid())
+  name  String
+  users User[]
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  role         String // OWNER | TEAM_LEAD | REP
+  teamId       String?
+  team         Team?      @relation(fields: [teamId], references: [id])
+  leads        Lead[]
+  activities   Activity[]
+  goals        Goal[]
+  invites      Invite[]
+  passwordHash String? // null until the person sets a password via their invite link
+  createdAt    DateTime   @default(now())
+}
+
+/**
+ * One-time link for setting (or resetting) a password. Only a hash of the token is stored.
+ */
+model Invite {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+/**
+ * Failed sign-ins, for throttling password guessing.
+ */
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+}
+
+model Lead {
+  id                String     @id @default(cuid())
+  company           String
+  contactName       String?
+  email             String?
+  phone             String?
+  website           String?
+  location          String?
+  industry          String?
+  serviceInterest   String?
+  source            String     @default("MANUAL") // MANUAL | WEBSITE | QUOTE
+  stage             String     @default("NEW") // see STAGES in src/lib/domain.ts
+  value             Int        @default(0) // one-off value, pence
+  monthlyValue      Int        @default(0) // recurring value, pence
+  ownerId           String?
+  owner             User?      @relation(fields: [ownerId], references: [id])
+  nextFollowUpAt    DateTime?
+  lastContactAt     DateTime?
+  lastReplyAt       DateTime?
+  unansweredTouches Int        @default(0)
+  stageChangedAt    DateTime   @default(now())
+  activities        Activity[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([ownerId])
+  @@index([stage])
+}
+
+model Activity {
+  id         String   @id @default(cuid())
+  type       String // CALL | EMAIL_OUT | EMAIL_IN | MEETING | VISIT | NOTE | PROPOSAL
+  outcome    String? // e.g. CONNECTED | NO_ANSWER | VOICEMAIL | INTERESTED | NOT_INTERESTED
+  summary    String?
+  source     String   @default("MANUAL") // MANUAL | GMAIL | CALENDAR | BOT
+  externalId String?  @unique // Gmail message id / Calendar event id, makes sync idempotent
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([leadId])
+  @@index([userId, occurredAt])
+}
+
+model Goal {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metric String // CALLS | EMAILS | MEETINGS | DEALS_WON | REVENUE_WON
+  period String // WEEK | MONTH
+  target Int
+
+  @@unique([userId, metric, period])
+}
