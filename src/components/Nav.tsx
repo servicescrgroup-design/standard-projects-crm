@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const ITEMS = [
   { href: "/today", label: "Today", icon: "M12 8v4l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" },
   { href: "/log", label: "Log", icon: "M12 5v14M5 12h14" },
+  { href: "/pipeline", label: "Pipeline", icon: "M4 4h4v16H4zM10 4h4v10h-4zM16 4h4v6h-4z" },
   { href: "/leads", label: "Leads", icon: "M17 20h5v-2a3 3 0 0 0-5.4-1.8M9 20H2v-2a4 4 0 0 1 7-2.6M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" },
   { href: "/team", label: "Team", icon: "M3 3v18h18M7 15l4-4 3 3 5-6" },
 ];
@@ -54,7 +55,7 @@ export function BottomNav({ dueCount, showSettings }: { dueCount: number; showSe
   return (
     <nav
       className={`glass fixed inset-x-3 bottom-3 z-20 grid rounded-2xl pb-[env(safe-area-inset-bottom)] md:hidden ${
-        showSettings ? "grid-cols-5" : "grid-cols-4"
+        showSettings ? "grid-cols-6" : "grid-cols-5"
       }`}
     >
       {items.map((it) => {

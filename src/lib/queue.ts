@@ -1,4 +1,4 @@
-import { DAY_MS, MAX_UNANSWERED_TOUCHES, OPEN_STAGES, endOfDay, formatMoney, type Stage } from "./domain";
+import { DAY_MS, OPEN_STAGES, endOfDay, formatMoney, touchLimit, type Stage } from "./domain";
 
 export type QueueLead = {
   id: string;
@@ -9,6 +9,7 @@ export type QueueLead = {
   lastContactAt: Date | null;
   lastReplyAt: Date | null;
   unansweredTouches: number;
+  priority?: string | null;
 };
 
 export type QueueItem<T extends QueueLead> = {
@@ -19,6 +20,7 @@ export type QueueItem<T extends QueueLead> = {
 };
 
 const STAGE_WEIGHT: Partial<Record<Stage, number>> = {
+  NEGOTIATION: 35,
   PROPOSAL_SENT: 30,
   MEETING_BOOKED: 25,
   NEW: 15,
@@ -52,6 +54,14 @@ export function scoreLead<T extends QueueLead>(lead: T, now: Date): QueueItem<T>
 
   score += STAGE_WEIGHT[lead.stage as Stage] ?? 0;
 
+  // Lead-list priority (A = strongest fit) breaks ties between otherwise similar prospects.
+  if (lead.priority === "A") {
+    score += 12;
+    reasons.push("Priority A");
+  } else if (lead.priority === "B") {
+    score += 5;
+  }
+
   // Annualise recurring revenue so ฿3,000/mo outranks a ฿20,000 one-off. A ฿200k+ deal earns the full 25.
   const dealMinor = lead.value + lead.monthlyValue * 12;
   if (dealMinor > 0) {
@@ -70,7 +80,7 @@ export function scoreLead<T extends QueueLead>(lead: T, now: Date): QueueItem<T>
   }
 
   // A reply means the round isn't unanswered any more, whatever the counter says.
-  const needsDecision = !awaitingReply && lead.unansweredTouches >= MAX_UNANSWERED_TOUCHES;
+  const needsDecision = !awaitingReply && lead.unansweredTouches >= touchLimit(lead.stage);
   if (needsDecision) {
     // Push to the bottom: a decision is needed, not another chase.
     score -= 40;

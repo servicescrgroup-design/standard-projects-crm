@@ -33,10 +33,23 @@ describe("applyActivity", () => {
     expect(p.stage).toBeUndefined();
   });
 
-  it("uses the 7-day proposal cadence", () => {
-    const p = applyActivity(lead({ stage: "MEETING_BOOKED" }), { type: "PROPOSAL", occurredAt: now }, now);
-    expect(p.stage).toBe("PROPOSAL_SENT");
-    expect(p.nextFollowUpAt?.getTime()).toBe(now.getTime() + 7 * DAY_MS);
+  it("follows up a proposal on day 2, day 5 and day 10 (SOP)", () => {
+    const sent = applyActivity(lead({ stage: "MEETING_BOOKED", unansweredTouches: 3 }), { type: "PROPOSAL", occurredAt: now }, now);
+    expect(sent.stage).toBe("PROPOSAL_SENT");
+    expect(sent.unansweredTouches).toBe(1); // a proposal starts a fresh round
+    expect(sent.nextFollowUpAt?.getTime()).toBe(now.getTime() + 2 * DAY_MS);
+
+    const chase1 = applyActivity(lead({ stage: "PROPOSAL_SENT", unansweredTouches: 1 }), { type: "CALL", outcome: "NO_ANSWER", occurredAt: now }, now);
+    expect(chase1.nextFollowUpAt?.getTime()).toBe(now.getTime() + 3 * DAY_MS); // day 5
+
+    const chase2 = applyActivity(lead({ stage: "PROPOSAL_SENT", unansweredTouches: 2 }), { type: "EMAIL_OUT", occurredAt: now }, now);
+    expect(chase2.nextFollowUpAt?.getTime()).toBe(now.getTime() + 5 * DAY_MS); // day 10
+  });
+
+  it("never reopens maintenance clients", () => {
+    const p = applyActivity(lead({ stage: "MAINTENANCE" }), { type: "EMAIL_OUT", occurredAt: now }, now);
+    expect(p.stage).toBeUndefined();
+    expect(p.nextFollowUpAt).toBeNull();
   });
 
   it("a reply resets the unanswered counter and makes the lead due now", () => {

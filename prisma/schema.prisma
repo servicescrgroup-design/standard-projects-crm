@@ -67,7 +67,23 @@ model Lead {
   location          String?
   industry          String?
   serviceInterest   String?
-  source            String     @default("MANUAL") // MANUAL | WEBSITE | QUOTE
+  source            String     @default("MANUAL") // see SOURCES in src/lib/domain.ts
+  sourceLink        String?
+  externalRef       String?    @unique // e.g. the Notion page URL it was imported from; makes imports re-runnable
+  priority          String? // A | B | C
+  segment           String? // e.g. Consignment, Spa, Website-Marketing, Rental, Gym, Export-Trading, Multi-location
+  address           String?
+  socialLinks       String?
+  googleRating      Float?
+  googleReviews     Int?
+  whyFit            String?
+  needs             String?
+  offersToPitch     String[]   @default([])
+  caseStudies       String[]   @default([])
+  notes             String?
+  budget            Int        @default(0) // customer's stated budget, minor units
+  package           String? // Starter | Business | Growth | Custom
+  lostReason        String?
   stage             String     @default("NEW") // see STAGES in src/lib/domain.ts
   value             Int        @default(0) // one-off value, pence
   monthlyValue      Int        @default(0) // recurring value, pence
@@ -84,6 +100,8 @@ model Lead {
 
   @@index([ownerId])
   @@index([stage])
+  @@index([priority])
+  @@index([segment])
 }
 
 model Activity {

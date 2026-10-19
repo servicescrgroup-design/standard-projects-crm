@@ -18,12 +18,15 @@ import {
 import { logActivity } from "@/lib/server/activities";
 import { canAssignTo, canManageGoals, canManagePeople, canSeeLead, wouldLeaveNoOwner } from "@/lib/access";
 import {
+  CLOSED_STAGES,
   DAY_MS,
   GOAL_METRICS,
   GOAL_PERIODS,
   isActivityType,
   isOutcome,
+  isPriority,
   isRole,
+  isSource,
   isStage,
   toMinor,
   type GoalMetric,
@@ -172,6 +175,9 @@ export async function createLead(fd: FormData) {
       location: str(fd, "location") || null,
       industry: str(fd, "industry") || null,
       serviceInterest: str(fd, "serviceInterest") || null,
+      priority: isPriority(str(fd, "priority")) ? str(fd, "priority") : null,
+      segment: str(fd, "segment") || null,
+      source: isSource(str(fd, "source")) ? str(fd, "source") : "MANUAL",
       value: toMinor(str(fd, "value")),
       monthlyValue: toMinor(str(fd, "monthlyValue")),
       ownerId,
@@ -185,7 +191,15 @@ export async function createLead(fd: FormData) {
 export async function updateLead(fd: FormData) {
   const leadId = str(fd, "leadId");
   const { user, lead } = await loadVisibleLead(leadId);
+  const priority = str(fd, "priority");
   const data: Record<string, unknown> = {
+    priority: isPriority(priority) ? priority : null,
+    segment: str(fd, "segment") || null,
+    package: str(fd, "package") || null,
+    budget: toMinor(str(fd, "budget")),
+    needs: str(fd, "needs") || null,
+    notes: str(fd, "notes") || null,
+    lostReason: str(fd, "lostReason") || null,
     contactName: str(fd, "contactName") || null,
     email: str(fd, "email").toLowerCase() || null,
     phone: str(fd, "phone") || null,
@@ -198,7 +212,7 @@ export async function updateLead(fd: FormData) {
   if (isStage(stage) && stage !== lead.stage) {
     data.stage = stage;
     data.stageChangedAt = new Date();
-    if (stage === "WON" || stage === "LOST") data.nextFollowUpAt = null;
+    if (CLOSED_STAGES.includes(stage)) data.nextFollowUpAt = null;
   }
 
   if (fd.has("ownerId")) {
@@ -263,7 +277,7 @@ async function requireOwner() {
   return user;
 }
 
-export type FormResult = { error?: string; ok?: boolean; link?: string; linkFor?: string };
+export type FormResult = { error?: string; ok?: boolean; link?: string; linkFor?: string; message?: string };
 
 /** "" = no team; otherwise the id must exist. Returns undefined for an unknown team. */
 async function resolveTeamId(raw: string): Promise<string | null | undefined> {
@@ -358,4 +372,25 @@ export async function createSignInLink(_prev: FormResult, fd: FormData): Promise
   const person = await db.user.findUnique({ where: { id: str(fd, "userId") } });
   if (!person) return { error: "Person not found" };
   return { ok: true, link: await inviteLink(person.id), linkFor: person.name };
+}
+
+/** Owners and team leads hand out leads in bulk (e.g. 50 priority-A spa leads to one rep). */
+export async function assignLeads(_prev: FormResult, fd: FormData): Promise<FormResult> {
+  const user = await requireUser();
+  if (user.role === "REP") return { error: "Only owners and team leads can assign leads" };
+  const ids = fd.getAll("leadIds").map(String).filter(Boolean);
+  if (ids.length === 0) return { error: "Tick at least one lead first" };
+  if (ids.length > 500) return { error: "Assign at most 500 leads at a time" };
+
+  const requested = str(fd, "ownerId");
+  const assignee = requested ? await db.user.findUnique({ where: { id: requested } }) : null;
+  if (requested && !assignee) return { error: "Unknown person" };
+  if (!canAssignTo(user, assignee)) return { error: "You can't assign leads to that person" };
+
+  // Only leads this person can see are touched, whatever was posted.
+  const leads = await db.lead.findMany({ where: { id: { in: ids } }, include: { owner: true } });
+  const allowed = leads.filter((l) => canSeeLead(user, l)).map((l) => l.id);
+  const { count } = await db.lead.updateMany({ where: { id: { in: allowed } }, data: { ownerId: assignee?.id ?? null } });
+  revalidateAll();
+  return { ok: true, message: `${count} lead${count === 1 ? "" : "s"} ${assignee ? `assigned to ${assignee.name}` : "moved to unassigned"}` };
 }

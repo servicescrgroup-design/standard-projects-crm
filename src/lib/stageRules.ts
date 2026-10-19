@@ -1,6 +1,8 @@
 import {
   CADENCE_DAYS,
+  CLOSED_STAGES,
   DAY_MS,
+  PROPOSAL_FOLLOW_UP_GAPS,
   type ActivityType,
   type Outcome,
   type Stage,
@@ -53,7 +55,7 @@ function addDays(d: Date, days: number): Date {
 export function applyActivity(lead: LeadState, a: ActivityInput, now: Date = new Date()): LeadPatch {
   const patch: LeadPatch = {};
   const current: Stage = isStage(lead.stage) ? lead.stage : "NEW";
-  const closed = current === "WON" || current === "LOST";
+  const closed = CLOSED_STAGES.includes(current);
 
   if (a.type === "NOTE") {
     if (a.nextFollowUpAt) patch.nextFollowUpAt = a.nextFollowUpAt;
@@ -82,14 +84,15 @@ export function applyActivity(lead: LeadState, a: ActivityInput, now: Date = new
     patch.unansweredTouches = 0;
     if (a.type === "EMAIL_IN") patch.lastReplyAt = a.occurredAt;
   } else if (isUnansweredTouch(a)) {
-    patch.unansweredTouches = lead.unansweredTouches + 1;
+    // Sending a proposal starts a fresh follow-up round.
+    patch.unansweredTouches = patch.stage === "PROPOSAL_SENT" ? 1 : lead.unansweredTouches + 1;
   }
 
   // --- next follow-up ---
   const stageAfter: Stage = target;
   if (a.nextFollowUpAt) {
     patch.nextFollowUpAt = a.nextFollowUpAt;
-  } else if (stageAfter === "WON" || stageAfter === "LOST") {
+  } else if (CLOSED_STAGES.includes(stageAfter)) {
     patch.nextFollowUpAt = null;
   } else if (a.type === "EMAIL_IN") {
     // They replied: it's on us now.
@@ -98,6 +101,11 @@ export function applyActivity(lead: LeadState, a: ActivityInput, now: Date = new
     // Follow up the day after the meeting (meetings from the calendar may be in the future).
     const base = a.occurredAt > now ? a.occurredAt : now;
     patch.nextFollowUpAt = addDays(base, CADENCE_DAYS.MEETING_BOOKED ?? 1);
+  } else if (stageAfter === "PROPOSAL_SENT") {
+    // SOP: chase on day 2, day 5 and day 10 after the proposal.
+    const touches = patch.unansweredTouches ?? lead.unansweredTouches;
+    const gap = PROPOSAL_FOLLOW_UP_GAPS[Math.min(Math.max(touches, 1), PROPOSAL_FOLLOW_UP_GAPS.length) - 1];
+    patch.nextFollowUpAt = addDays(now, gap);
   } else {
     patch.nextFollowUpAt = addDays(now, CADENCE_DAYS[stageAfter] ?? 7);
   }

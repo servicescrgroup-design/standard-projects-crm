@@ -6,15 +6,26 @@ import { canAssignTo, canSeeLead } from "@/lib/access";
 import {
   ACTIVITY_LABELS,
   OUTCOME_LABELS,
+  PACKAGES,
+  PRIORITIES,
+  SEGMENTS,
+  SOURCE_LABELS,
   STAGES,
   STAGE_LABELS,
+  formatMoney,
   type ActivityType,
   type Outcome,
+  type Source,
 } from "@/lib/domain";
 import { QuickLogForm } from "@/components/QuickLogForm";
 import { updateLead } from "../../../actions";
 
 export const dynamic = "force-dynamic";
+
+/** Splits "url1; url2" style link lists into clickable links. */
+function links(raw: string | null): string[] {
+  return (raw ?? "").split(/[;\s,]+/).filter((s) => /^https?:\/\//i.test(s));
+}
 
 const SOURCE_LABEL: Record<string, string> = { GMAIL: "Gmail", CALENDAR: "Calendar", BOT: "Bot", WEBSITE: "Website", QUOTE: "Quote form", MANUAL: "" };
 const fmt = (d: Date | null) =>
@@ -77,6 +88,117 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
         <div className="space-y-5">
           <section className="card p-4">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <h2 className="font-semibold">Prospect profile</h2>
+              {lead.priority && <span className="chip bg-green-600 text-white">Priority {lead.priority}</span>}
+              {lead.segment && <span className="chip">{lead.segment}</span>}
+              <span className="chip bg-indigo-50 text-indigo-700">{SOURCE_LABELS[lead.source as Source] ?? lead.source}</span>
+              {lead.googleRating !== null && (
+                <span className="chip">
+                  ★ {lead.googleRating} · {lead.googleReviews ?? 0} Google reviews
+                </span>
+              )}
+            </div>
+            <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+              {lead.whyFit && (
+                <div className="sm:col-span-2">
+                  <dt className="label">Why a fit</dt>
+                  <dd>{lead.whyFit}</dd>
+                </div>
+              )}
+              {lead.offersToPitch.length > 0 && (
+                <div>
+                  <dt className="label">Offers to pitch</dt>
+                  <dd className="flex flex-wrap gap-1">
+                    {lead.offersToPitch.map((o) => (
+                      <span key={o} className="chip bg-green-50 text-green-800">
+                        {o}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              )}
+              {lead.caseStudies.length > 0 && (
+                <div>
+                  <dt className="label">Case studies to show</dt>
+                  <dd className="flex flex-wrap gap-1">
+                    {lead.caseStudies.map((c) => (
+                      <span key={c} className="chip">
+                        {c}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              )}
+              {lead.address && (
+                <div>
+                  <dt className="label">Address</dt>
+                  <dd>
+                    <a
+                      className="text-green-700 hover:underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lead.company} ${lead.address}`)}`}
+                    >
+                      {lead.address}
+                    </a>
+                  </dd>
+                </div>
+              )}
+              {(lead.website || links(lead.socialLinks).length > 0) && (
+                <div>
+                  <dt className="label">Online</dt>
+                  <dd className="flex flex-col gap-0.5">
+                    {[lead.website, ...links(lead.socialLinks)].filter(Boolean).map((u) => (
+                      <a key={u} href={u!} target="_blank" rel="noopener noreferrer" className="truncate text-green-700 hover:underline">
+                        {u!.replace(/^https?:\/\/(www\.)?/, "")}
+                      </a>
+                    ))}
+                  </dd>
+                </div>
+              )}
+              {lead.notes && (
+                <div className="sm:col-span-2">
+                  <dt className="label">Notes</dt>
+                  <dd className="whitespace-pre-line">{lead.notes}</dd>
+                </div>
+              )}
+              {lead.needs && (
+                <div className="sm:col-span-2">
+                  <dt className="label">Plan and needs</dt>
+                  <dd className="whitespace-pre-line">{lead.needs}</dd>
+                </div>
+              )}
+              {(lead.budget > 0 || lead.package) && (
+                <div>
+                  <dt className="label">Budget / package</dt>
+                  <dd>{[lead.budget > 0 && formatMoney(lead.budget), lead.package].filter(Boolean).join(" · ")}</dd>
+                </div>
+              )}
+              {lead.lostReason && (
+                <div>
+                  <dt className="label">Lost reason</dt>
+                  <dd>{lead.lostReason}</dd>
+                </div>
+              )}
+              {(lead.sourceLink || lead.externalRef?.startsWith("https://app.notion.com")) && (
+                <div className="flex gap-4 sm:col-span-2">
+                  {lead.sourceLink && (
+                    <a href={lead.sourceLink} target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:underline">
+                      Where we found them ↗
+                    </a>
+                  )}
+                  {lead.externalRef?.startsWith("https://app.notion.com") && (
+                    <a href={lead.externalRef} target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:underline">
+                      Open in Notion ↗
+                    </a>
+                  )}
+                </div>
+              )}
+            </dl>
+          </section>
+
+          <section className="card p-4">
             <h2 className="mb-3 font-semibold">Log activity</h2>
             <QuickLogForm leadId={lead.id} />
           </section>
@@ -122,6 +244,39 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               </select>
               <p className="mt-1 text-xs text-slate-500">Moves forward automatically as you log. Change it here to override.</p>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label" htmlFor="ld-priority">Priority</label>
+                <select id="ld-priority" name="priority" defaultValue={lead.priority ?? ""} className="input">
+                  <option value="">—</option>
+                  {PRIORITIES.map((p) => (
+                    <option key={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label" htmlFor="ld-segment">Segment</label>
+                <select id="ld-segment" name="segment" defaultValue={lead.segment ?? ""} className="input">
+                  <option value="">—</option>
+                  {SEGMENTS.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label" htmlFor="ld-package">Package</label>
+                <select id="ld-package" name="package" defaultValue={lead.package ?? ""} className="input">
+                  <option value="">—</option>
+                  {PACKAGES.map((p) => (
+                    <option key={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label" htmlFor="ld-budget">Their budget (฿)</label>
+                <input id="ld-budget" name="budget" defaultValue={pounds(lead.budget)} inputMode="decimal" className="input" />
+              </div>
+            </div>
             {canAssign ? (
               <div>
                 <label className="label">Owner</label>
@@ -149,7 +304,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                 <input name="value" defaultValue={pounds(lead.value)} inputMode="decimal" className="input" />
               </div>
               <div>
-                <label className="label">Monthly (฿)</label>
+                <label className="label">Monthly care plan (฿)</label>
                 <input name="monthlyValue" defaultValue={pounds(lead.monthlyValue)} inputMode="decimal" className="input" />
               </div>
             </div>
@@ -168,6 +323,18 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             <div>
               <label className="label">Website</label>
               <input name="website" defaultValue={lead.website ?? ""} className="input" />
+            </div>
+            <div>
+              <label className="label" htmlFor="ld-needs">Plan and needs</label>
+              <textarea id="ld-needs" name="needs" rows={2} defaultValue={lead.needs ?? ""} className="input" />
+            </div>
+            <div>
+              <label className="label" htmlFor="ld-notes">Notes</label>
+              <textarea id="ld-notes" name="notes" rows={3} defaultValue={lead.notes ?? ""} className="input" />
+            </div>
+            <div>
+              <label className="label" htmlFor="ld-lost">Lost reason</label>
+              <input id="ld-lost" name="lostReason" defaultValue={lead.lostReason ?? ""} className="input" />
             </div>
             <button className="btn-primary">Save changes</button>
           </form>

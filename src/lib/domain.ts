@@ -1,18 +1,75 @@
 export const ROLES = ["OWNER", "TEAM_LEAD", "REP"] as const;
 export type Role = (typeof ROLES)[number];
 
-export const STAGES = ["NEW", "CONTACTED", "MEETING_BOOKED", "PROPOSAL_SENT", "WON", "LOST"] as const;
+/** Pipeline, following the "SOP Lead to Launch" in Notion. MEETING_BOOKED is the Discovery call stage. */
+export const STAGES = [
+  "NEW",
+  "CONTACTED",
+  "MEETING_BOOKED",
+  "PROPOSAL_SENT",
+  "NEGOTIATION",
+  "WON",
+  "MAINTENANCE",
+  "LOST",
+] as const;
 export type Stage = (typeof STAGES)[number];
-export const OPEN_STAGES: Stage[] = ["NEW", "CONTACTED", "MEETING_BOOKED", "PROPOSAL_SENT"];
+export const OPEN_STAGES: Stage[] = ["NEW", "CONTACTED", "MEETING_BOOKED", "PROPOSAL_SENT", "NEGOTIATION"];
+/** Stages that count as a won customer. */
+export const WON_STAGES: Stage[] = ["WON", "MAINTENANCE"];
+export const CLOSED_STAGES: Stage[] = ["WON", "MAINTENANCE", "LOST"];
 
 export const STAGE_LABELS: Record<Stage, string> = {
-  NEW: "New lead",
+  NEW: "Lead",
   CONTACTED: "Contacted",
-  MEETING_BOOKED: "Meeting booked",
+  MEETING_BOOKED: "Discovery",
   PROPOSAL_SENT: "Proposal sent",
+  NEGOTIATION: "Negotiation",
   WON: "Won",
+  MAINTENANCE: "Maintenance client",
   LOST: "Lost",
 };
+
+export const SOURCES = [
+  "MANUAL",
+  "WEBSITE",
+  "QUOTE",
+  "COLD_OUTREACH",
+  "REFERRAL",
+  "LINE",
+  "FACEBOOK",
+  "GOOGLE",
+] as const;
+export type Source = (typeof SOURCES)[number];
+export const SOURCE_LABELS: Record<Source, string> = {
+  MANUAL: "Added by hand",
+  WEBSITE: "Website enquiry",
+  QUOTE: "Quote request",
+  COLD_OUTREACH: "Cold outreach",
+  REFERRAL: "Referral",
+  LINE: "LINE",
+  FACEBOOK: "Facebook",
+  GOOGLE: "Google",
+};
+
+export const PRIORITIES = ["A", "B", "C"] as const;
+export type Priority = (typeof PRIORITIES)[number];
+export const PRIORITY_LABELS: Record<Priority, string> = {
+  A: "A · strongest",
+  B: "B · good",
+  C: "C · smaller / unconfirmed",
+};
+
+export const SEGMENTS = [
+  "Consignment",
+  "Spa",
+  "Website-Marketing",
+  "Rental",
+  "Gym",
+  "Export-Trading",
+  "Multi-location",
+] as const;
+
+export const PACKAGES = ["Starter", "Business", "Growth", "Custom"] as const;
 
 export const ACTIVITY_TYPES = ["CALL", "EMAIL_OUT", "EMAIL_IN", "MEETING", "VISIT", "NOTE", "PROPOSAL"] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
@@ -56,17 +113,35 @@ export const CADENCE_DAYS: Partial<Record<Stage, number>> = {
   NEW: 1,
   CONTACTED: 14,
   MEETING_BOOKED: 1,
-  PROPOSAL_SENT: 7,
+  PROPOSAL_SENT: 3,
+  NEGOTIATION: 3,
 };
+
+/**
+ * Proposal follow-ups per the SOP: day 2, day 5 and day 10 after sending, then mark Lost with a reason.
+ * Index = unanswered touches so far in this proposal round (the proposal itself counts as the first).
+ */
+export const PROPOSAL_FOLLOW_UP_GAPS = [2, 3, 5];
 
 /** After this many unanswered touches in a round, the lead needs a keep/close decision. */
 export const MAX_UNANSWERED_TOUCHES = 6;
+
+/** Unanswered touches allowed before a keep/close decision: proposals follow the SOP (sent + 3 chases). */
+export function touchLimit(stage: string): number {
+  return stage === "PROPOSAL_SENT" ? PROPOSAL_FOLLOW_UP_GAPS.length + 1 : MAX_UNANSWERED_TOUCHES;
+}
 
 /** Open leads with no contact for this many days count as stalled on the manager view. */
 export const STALLED_AFTER_DAYS = 14;
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
+export function isSource(v: unknown): v is Source {
+  return typeof v === "string" && (SOURCES as readonly string[]).includes(v);
+}
+export function isPriority(v: unknown): v is Priority {
+  return typeof v === "string" && (PRIORITIES as readonly string[]).includes(v);
+}
 export function isStage(v: unknown): v is Stage {
   return typeof v === "string" && (STAGES as readonly string[]).includes(v);
 }

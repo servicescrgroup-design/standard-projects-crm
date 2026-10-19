@@ -10,6 +10,7 @@ import {
   STAGES,
   STAGE_LABELS,
   STALLED_AFTER_DAYS,
+  WON_STAGES,
   formatMoney,
   startOfMonth,
   startOfWeek,
@@ -56,7 +57,7 @@ export default async function TeamPage() {
       select: { userId: true, type: true, occurredAt: true },
     }),
     db.lead.findMany({
-      where: { ownerId: { in: ids }, stage: "WON", stageChangedAt: { gte: periodStart } },
+      where: { ownerId: { in: ids }, stage: { in: WON_STAGES }, stageChangedAt: { gte: periodStart } },
       select: { ownerId: true, value: true, monthlyValue: true, stageChangedAt: true },
     }),
     db.lead.findMany({
@@ -251,7 +252,7 @@ export default async function TeamPage() {
                 <span>{STAGE_LABELS[s.stage]}</span>
                 <div className="h-2 rounded-full bg-slate-100">
                   <div
-                    className={`h-2 rounded-full ${s.stage === "WON" ? "bg-emerald-500" : s.stage === "LOST" ? "bg-slate-400" : "bg-green-500"}`}
+                    className={`h-2 rounded-full ${WON_STAGES.includes(s.stage) ? "bg-emerald-500" : s.stage === "LOST" ? "bg-slate-400" : "bg-green-500"}`}
                     style={{ width: `${(s.count / maxCount) * 100}%` }}
                   />
                 </div>

@@ -78,6 +78,19 @@ describe("buildQueue", () => {
     expect(q[0].needsDecision).toBe(false);
   });
 
+  it("asks for a decision after the proposal's day-10 chase goes unanswered", () => {
+    const q = buildQueue([lead({ stage: "PROPOSAL_SENT", unansweredTouches: 4 })], now);
+    expect(q[0].needsDecision).toBe(true);
+    expect(buildQueue([lead({ stage: "PROPOSAL_SENT", unansweredTouches: 3 })], now)[0].needsDecision).toBe(false);
+  });
+
+  it("ranks priority A prospects above B and C", () => {
+    const c = lead({ stage: "NEW", nextFollowUpAt: null, priority: "C" });
+    const a = lead({ stage: "NEW", nextFollowUpAt: null, priority: "A" });
+    const b = lead({ stage: "NEW", nextFollowUpAt: null, priority: "B" });
+    expect(buildQueue([c, b, a], now).map((i) => i.lead.id)).toEqual([a.id, b.id, c.id]);
+  });
+
   it("explains overdue days", () => {
     const q = buildQueue([lead({ nextFollowUpAt: new Date(now.getTime() - 5 * DAY_MS) })], now);
     expect(q[0].reasons).toContain("Overdue 5 days");
