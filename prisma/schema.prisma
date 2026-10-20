@@ -102,6 +102,8 @@ model Lead {
   @@index([stage])
   @@index([priority])
   @@index([segment])
+  @@index([ownerId, stage])
+  @@index([nextFollowUpAt])
 }
 
 model Activity {

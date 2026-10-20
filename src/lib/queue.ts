@@ -12,6 +12,19 @@ export type QueueLead = {
   priority?: string | null;
 };
 
+/** The columns the queue needs; select only these so pages don't load whole lead records. */
+export const QUEUE_SELECT = {
+  id: true,
+  stage: true,
+  value: true,
+  monthlyValue: true,
+  nextFollowUpAt: true,
+  lastContactAt: true,
+  lastReplyAt: true,
+  unansweredTouches: true,
+  priority: true,
+} as const;
+
 export type QueueItem<T extends QueueLead> = {
   lead: T;
   score: number;

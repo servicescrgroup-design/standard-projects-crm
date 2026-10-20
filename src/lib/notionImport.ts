@@ -159,3 +159,88 @@ export function mapNotionRow(row: NotionCustomerRow): ImportedLead | null {
     createdAt: date(row, "createdTime"),
   };
 }
+
+// ---------- Matching against leads already in the CRM ----------
+
+export type ExistingLead = {
+  id: string;
+  company: string;
+  phone: string | null;
+  externalRef: string | null;
+} & Partial<Record<keyof ImportedLead, unknown>>;
+
+/** Thai numbers: compare the first 10 digits so "096 627 5499" and "0966275499" match. */
+export function phoneKey(phone: string | null | undefined): string | null {
+  const digits = (phone ?? "").replace(/\D/g, "").slice(0, 10);
+  return digits.length >= 9 ? digits : null;
+}
+
+export function nameKey(company: string): string {
+  return company.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+// Profile fields an import may fill in on an existing lead. Ownership, stage, dates and
+// money the team has already entered are never overwritten.
+const FILLABLE: (keyof ImportedLead)[] = [
+  "contactName", "email", "phone", "socialLinks", "website", "address", "location", "industry", "segment",
+  "serviceInterest", "priority", "sourceLink", "googleRating", "googleReviews", "whyFit", "needs",
+  "offersToPitch", "caseStudies", "notes", "package", "lostReason",
+];
+
+function isEmpty(v: unknown): boolean {
+  return v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0);
+}
+
+/** What an import may change on an existing lead: the Notion link plus empty profile fields. */
+export type LeadEnrichment = Partial<Omit<ImportedLead, "createdAt" | "nextFollowUpAt" | "lastContactAt" | "stage">>;
+
+export type ImportPlan = {
+  create: ImportedLead[];
+  update: { id: string; data: LeadEnrichment }[];
+  skipped: number; // already imported (same Notion page)
+};
+
+/**
+ * Decides, per Notion row, whether to create a lead, enrich an existing one (matched by Notion page,
+ * phone or company name, e.g. leads someone already typed in by hand), or skip it.
+ */
+export function planImport(rows: ImportedLead[], existing: ExistingLead[]): ImportPlan {
+  const byRef = new Set(existing.map((e) => e.externalRef).filter(Boolean));
+  const byPhone = new Map<string, ExistingLead>();
+  const byName = new Map<string, ExistingLead>();
+  for (const e of existing) {
+    const p = phoneKey(e.phone);
+    if (p && !byPhone.has(p)) byPhone.set(p, e);
+    if (!byName.has(nameKey(e.company))) byName.set(nameKey(e.company), e);
+  }
+
+  const plan: ImportPlan = { create: [], update: [], skipped: 0 };
+  const claimed = new Set<string>();
+  for (const row of rows) {
+    if (byRef.has(row.externalRef)) {
+      plan.skipped++;
+      continue;
+    }
+    const p = phoneKey(row.phone);
+    const match = (p && byPhone.get(p)) || byName.get(nameKey(row.company));
+    if (!match) {
+      plan.create.push(row);
+      byRef.add(row.externalRef);
+      continue;
+    }
+    if (claimed.has(match.id) || match.externalRef) {
+      // That lead is already linked to another Notion page (e.g. branches sharing one phone number),
+      // so this row is a separate company: add it.
+      plan.create.push(row);
+      byRef.add(row.externalRef);
+      continue;
+    }
+    claimed.add(match.id);
+    const data: LeadEnrichment = { externalRef: row.externalRef };
+    for (const k of FILLABLE) {
+      if (isEmpty(match[k]) && !isEmpty(row[k])) (data as Record<string, unknown>)[k] = row[k];
+    }
+    plan.update.push({ id: match.id, data });
+  }
+  return plan;
+}

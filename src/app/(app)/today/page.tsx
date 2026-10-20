@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/server/session";
 import { db } from "@/lib/server/db";
-import { buildQueue } from "@/lib/queue";
+import { QUEUE_SELECT, buildQueue } from "@/lib/queue";
 import { OPEN_STAGES, STAGE_LABELS, type Stage } from "@/lib/domain";
 import { TodayItem } from "@/components/TodayItem";
 
@@ -8,9 +8,16 @@ export const dynamic = "force-dynamic";
 
 export default async function TodayPage() {
   const user = await requireUser();
-  const leads = await db.lead.findMany({ where: { ownerId: user.id, stage: { in: OPEN_STAGES } } });
+  const leads = await db.lead.findMany({
+    where: { ownerId: user.id, stage: { in: OPEN_STAGES } },
+    select: { ...QUEUE_SELECT, company: true, contactName: true, phone: true, email: true },
+  });
   const queue = buildQueue(leads);
-  const active = queue.filter((q) => !q.needsDecision);
+  const allActive = queue.filter((q) => !q.needsDecision);
+  // Show the top of the list; nobody works through hundreds in a day, and rendering them all is slow.
+  const SHOW = 50;
+  const active = allActive.slice(0, SHOW);
+  const hidden = allActive.length - active.length;
   const decisions = queue.filter((q) => q.needsDecision);
   const replies = active.filter((q) => q.reasons[0]?.startsWith("They replied")).length;
 
@@ -35,9 +42,9 @@ export default async function TodayPage() {
           {greeting}, {user.name.split(" ")[0]}
         </h1>
         <p className="mt-1 text-slate-500">
-          {active.length === 0
+          {allActive.length === 0
             ? "You're all caught up."
-            : `${active.length} to do today, most important first.${replies ? ` ${replies} ${replies === 1 ? "has" : "have"} replied and ${replies === 1 ? "is" : "are"} waiting on you.` : ""}`}
+            : `${allActive.length} to do today, most important first.${replies ? ` ${replies} ${replies === 1 ? "has" : "have"} replied and ${replies === 1 ? "is" : "are"} waiting on you.` : ""}`}
         </p>
       </div>
 
@@ -47,6 +54,11 @@ export default async function TodayPage() {
             <TodayItem key={q.lead.id} item={toItem(q)} rank={i + 1} />
           ))}
         </ol>
+      )}
+      {hidden > 0 && (
+        <p className="text-sm text-slate-500">
+          Showing your top {SHOW}. {hidden.toLocaleString("en-GB")} more are due; they move up as you work through these.
+        </p>
       )}
 
       {decisions.length > 0 && (

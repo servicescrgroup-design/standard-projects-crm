@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type Summary = { read: number; importable: number; imported: number; alreadyThere: number };
+type Summary = { read: number; importable: number; created: number; enriched: number; skipped: number };
 
 /** Uploads a Notion "Customers CRM" JSON export straight from the owner's computer. */
 export function ImportLeads() {
@@ -40,8 +40,9 @@ export function ImportLeads() {
       </label>
       {result && (
         <p className="text-sm text-green-700">
-          Imported {result.imported.toLocaleString("en-GB")} new lead{result.imported === 1 ? "" : "s"}
-          {result.alreadyThere > 0 && ` · ${result.alreadyThere.toLocaleString("en-GB")} were already in the CRM`}
+          {result.created.toLocaleString("en-GB")} new lead{result.created === 1 ? "" : "s"} added
+          {result.enriched > 0 && ` · ${result.enriched.toLocaleString("en-GB")} existing leads updated with Notion details`}
+          {result.skipped > 0 && ` · ${result.skipped.toLocaleString("en-GB")} already imported`}
           {result.read > result.importable && ` · ${result.read - result.importable} rows skipped (no company name)`}.
         </p>
       )}

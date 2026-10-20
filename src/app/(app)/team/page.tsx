@@ -64,7 +64,20 @@ export default async function TeamPage() {
       where: { ownerId: { in: ids }, stage: { in: OPEN_STAGES } },
       select: { ownerId: true, value: true, monthlyValue: true, nextFollowUpAt: true },
     }),
-    db.lead.findMany({ where: leadScope(user), include: { owner: true } }),
+    db.lead.findMany({
+      where: leadScope(user),
+      select: {
+        id: true,
+        company: true,
+        stage: true,
+        ownerId: true,
+        value: true,
+        monthlyValue: true,
+        lastContactAt: true,
+        createdAt: true,
+        owner: { select: { name: true } },
+      },
+    }),
   ]);
 
   const weekStats = computeRepStats(

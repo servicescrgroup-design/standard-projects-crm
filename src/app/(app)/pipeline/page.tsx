@@ -19,21 +19,32 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   if ((SEGMENTS as readonly string[]).includes(segment)) filters.push({ segment });
   const where: Prisma.LeadWhereInput = { AND: filters };
 
-  const [totals, people, columns] = await Promise.all([
-    db.lead.groupBy({ by: ["stage"], where, _count: true, _sum: { value: true, monthlyValue: true } }),
-    db.user.findMany({ where: teamScope(user), orderBy: { name: "asc" } }),
-    Promise.all(
-      STAGES.map((stage) =>
-        db.lead.findMany({
-          where: { AND: [where, { stage }] },
-          include: { owner: true },
-          orderBy: [{ priority: { sort: "asc", nulls: "last" } }, { nextFollowUpAt: { sort: "asc", nulls: "last" } }],
-          take: CARDS_PER_COLUMN,
-        }),
-      ),
-    ),
+  // One query for the whole board (sorted in the database), grouped here. Ten parallel queries
+  // queued behind a single pooled connection used to time out.
+  const [leads, people] = await Promise.all([
+    db.lead.findMany({
+      where,
+      select: {
+        id: true,
+        company: true,
+        stage: true,
+        priority: true,
+        segment: true,
+        value: true,
+        monthlyValue: true,
+        owner: { select: { name: true } },
+      },
+      orderBy: [{ priority: { sort: "asc", nulls: "last" } }, { nextFollowUpAt: { sort: "asc", nulls: "last" } }],
+    }),
+    db.user.findMany({ where: teamScope(user), orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
-  const totalFor = (s: Stage) => totals.find((t) => t.stage === s);
+  const byStage = new Map<string, typeof leads>(STAGES.map((s) => [s, []]));
+  for (const l of leads) byStage.get(l.stage)?.push(l);
+  const columns = STAGES.map((s) => (byStage.get(s) ?? []).slice(0, CARDS_PER_COLUMN));
+  const totalFor = (s: Stage) => {
+    const all = byStage.get(s) ?? [];
+    return { count: all.length, value: all.reduce((t, l) => t + l.value + l.monthlyValue * 12, 0) };
+  };
 
   return (
     <div className="space-y-5">
@@ -67,9 +78,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
       <div className="-mx-4 overflow-x-auto px-4 pb-2 md:-mx-8 md:px-8">
         <div className="flex gap-3" style={{ minWidth: `${STAGES.length * 236}px` }}>
           {STAGES.map((stage, i) => {
-            const t = totalFor(stage);
-            const count = t?._count ?? 0;
-            const value = (t?._sum.value ?? 0) + (t?._sum.monthlyValue ?? 0) * 12;
+            const { count, value } = totalFor(stage);
             const cards = columns[i];
             const qs = new URLSearchParams({ stage, ...(owner ? { owner } : {}), ...(segment ? { segment } : {}) });
             return (

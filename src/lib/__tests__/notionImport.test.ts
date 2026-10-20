@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapNotionRow, splitWebsite } from "../notionImport";
+import { mapNotionRow, phoneKey, planImport, splitWebsite } from "../notionImport";
 
 // Shaped like real rows from the Notion "Customers CRM" export (values are illustrative).
 const row = {
@@ -96,5 +96,64 @@ describe("Notion import", () => {
   it("skips rows without a company or page URL", () => {
     expect(mapNotionRow({ ...row, Company: "  " })).toBeNull();
     expect(mapNotionRow({ ...row, url: null })).toBeNull();
+  });
+});
+
+describe("Notion import planning", () => {
+  const base = mapNotionRow(row)!;
+  const existing = (over: Record<string, unknown> = {}) => ({
+    id: "lead-1",
+    company: "Somebody Else",
+    phone: null,
+    externalRef: null,
+    segment: null,
+    priority: null,
+    whyFit: null,
+    offersToPitch: [],
+    contactName: "Khun Mali",
+    ...over,
+  });
+
+  it("normalises Thai phone numbers", () => {
+    expect(phoneKey("096 000 0000")).toBe("0960000000");
+    expect(phoneKey("053-818-569")).toBe("053818569");
+    expect(phoneKey("12")).toBeNull();
+  });
+
+  it("creates leads that don't exist yet", () => {
+    const plan = planImport([base], [existing()]);
+    expect(plan.create).toHaveLength(1);
+    expect(plan.update).toHaveLength(0);
+  });
+
+  it("enriches a hand-entered lead with the same phone, without overwriting what's there", () => {
+    const plan = planImport([base], [existing({ phone: "0960000000", company: "Typed differently" })]);
+    expect(plan.create).toHaveLength(0);
+    expect(plan.update[0].id).toBe("lead-1");
+    expect(plan.update[0].data).toMatchObject({
+      externalRef: base.externalRef,
+      segment: "Gym",
+      priority: "B",
+      whyFit: base.whyFit,
+      offersToPitch: base.offersToPitch,
+    });
+    expect(plan.update[0].data).not.toHaveProperty("contactName"); // already filled in by the team
+    expect(plan.update[0].data).not.toHaveProperty("stage");
+  });
+
+  it("matches by company name when there's no phone", () => {
+    const plan = planImport([{ ...base, phone: null }], [existing({ company: "example muay thai camp" })]);
+    expect(plan.update).toHaveLength(1);
+  });
+
+  it("skips rows already imported", () => {
+    expect(planImport([base], [existing({ externalRef: base.externalRef })]).skipped).toBe(1);
+  });
+
+  it("adds branches that share a phone number as separate leads", () => {
+    const branch2 = { ...base, company: "Example Camp Branch 2", externalRef: "https://app.notion.com/other" };
+    const plan = planImport([base, branch2], [existing({ phone: "0960000000" })]);
+    expect(plan.update).toHaveLength(1);
+    expect(plan.create.map((c) => c.company)).toEqual(["Example Camp Branch 2"]);
   });
 });
