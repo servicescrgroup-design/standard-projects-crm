@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  if (!canManagePeople(user)) redirect("/today");
+  if (!canManagePeople(user)) redirect("/dashboard");
 
   const [teamRows, people] = await Promise.all([
     db.team.findMany({ include: { _count: { select: { users: true } } }, orderBy: { name: "asc" } }),

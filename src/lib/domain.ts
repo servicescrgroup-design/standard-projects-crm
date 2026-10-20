@@ -191,3 +191,23 @@ export function endOfDay(now: Date): Date {
   d.setHours(23, 59, 59, 999);
   return d;
 }
+
+/** Kanban/table pill colours per stage (reference palette: grey, pastel blue, orange, mint, red). */
+export const STAGE_PILL: Record<Stage, string> = {
+  NEW: "bg-[#f0f1f3] text-[#475467]",
+  CONTACTED: "bg-[#e0f2fe] text-[#075985]",
+  MEETING_BOOKED: "bg-[#dbeafe] text-[#1e40af]",
+  PROPOSAL_SENT: "bg-[#ffedd5] text-[#9a3412]",
+  NEGOTIATION: "bg-[#fef3c7] text-[#92400e]",
+  WON: "bg-[#d5f5e8] text-[#146c4b]",
+  MAINTENANCE: "bg-[#e9e3ff] text-[#5b3cc4]",
+  LOST: "bg-[#ffdada] text-[#a93f42]",
+};
+
+/** Position for a card dropped between two neighbours (null = column edge). */
+export function positionBetween(before: number | null, after: number | null): number {
+  if (before === null && after === null) return 1000;
+  if (before === null) return (after as number) - 1000;
+  if (after === null) return before + 1000;
+  return (before + after) / 2;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyActivity, type LeadState } from "../stageRules";
-import { DAY_MS } from "../domain";
+import { DAY_MS, positionBetween } from "../domain";
 
 const now = new Date("2026-10-19T10:00:00Z");
 const lead = (over: Partial<LeadState> = {}): LeadState => ({
@@ -98,5 +98,14 @@ describe("applyActivity", () => {
   it("notes don't change stage or contact dates", () => {
     const p = applyActivity(lead(), { type: "NOTE", occurredAt: now }, now);
     expect(p).toEqual({});
+  });
+});
+
+describe("board positions", () => {
+  it("places cards between neighbours and at the edges", () => {
+    expect(positionBetween(null, null)).toBe(1000);
+    expect(positionBetween(null, 500)).toBe(-500);
+    expect(positionBetween(500, null)).toBe(1500);
+    expect(positionBetween(1000, 2000)).toBe(1500);
   });
 });

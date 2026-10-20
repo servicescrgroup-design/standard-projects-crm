@@ -39,7 +39,7 @@ export function ImportLeads() {
         <input type="file" accept=".json,application/json" className="sr-only" disabled={busy} onChange={(e) => onFile(e.target.files?.[0])} />
       </label>
       {result && (
-        <p className="text-sm text-green-700">
+        <p className="text-sm text-brand-700">
           {result.created.toLocaleString("en-GB")} new lead{result.created === 1 ? "" : "s"} added
           {result.enriched > 0 && ` · ${result.enriched.toLocaleString("en-GB")} existing leads updated with Notion details`}
           {result.skipped > 0 && ` · ${result.skipped.toLocaleString("en-GB")} already imported`}

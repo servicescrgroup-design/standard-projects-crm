@@ -30,6 +30,7 @@ model User {
   goals        Goal[]
   invites      Invite[]
   passwordHash String? // null until the person sets a password via their invite link
+  preferences  Json       @default("{}") // per-user UI settings, e.g. dashboard widget order
   createdAt    DateTime   @default(now())
 }
 
@@ -84,6 +85,7 @@ model Lead {
   budget            Int        @default(0) // customer's stated budget, minor units
   package           String? // Starter | Business | Growth | Custom
   lostReason        String?
+  boardPosition     Float? // manual order within a Kanban column (lower = higher up); null = default ordering
   stage             String     @default("NEW") // see STAGES in src/lib/domain.ts
   value             Int        @default(0) // one-off value, pence
   monthlyValue      Int        @default(0) // recurring value, pence

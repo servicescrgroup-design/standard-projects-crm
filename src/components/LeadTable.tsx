@@ -18,8 +18,8 @@ export type LeadRow = {
 };
 
 const PRIORITY_STYLE: Record<string, string> = {
-  A: "bg-green-600 text-white",
-  B: "bg-green-100 text-green-800",
+  A: "bg-brand-600 text-white",
+  B: "bg-brand-100 text-brand-800",
   C: "bg-slate-100 text-slate-600",
 };
 
@@ -66,7 +66,7 @@ export function LeadTable({
           <label className="flex items-center gap-2 text-sm text-slate-600">
             <input
               type="checkbox"
-              className="h-4 w-4 accent-green-600"
+              className="h-4 w-4 accent-brand-600"
               checked={allOnPage}
               onChange={() => setSelected(allOnPage ? new Set() : new Set(rows.map((r) => r.id)))}
               aria-label="Select all leads on this page"
@@ -87,7 +87,7 @@ export function LeadTable({
               <AssignButton />
             </>
           )}
-          {state.message && <span className="text-sm font-medium text-green-700">{state.message}</span>}
+          {state.message && <span className="text-sm font-medium text-brand-700">{state.message}</span>}
           {state.error && <span className="text-sm text-rose-600">{state.error}</span>}
         </form>
       )}
@@ -97,7 +97,7 @@ export function LeadTable({
             {canAssign && (
               <input
                 type="checkbox"
-                className="h-4 w-4 shrink-0 accent-green-600"
+                className="h-4 w-4 shrink-0 accent-brand-600"
                 checked={selected.has(l.id)}
                 onChange={() => toggle(l.id)}
                 aria-label={`Select ${l.company}`}

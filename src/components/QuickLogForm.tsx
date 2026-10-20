@@ -49,7 +49,7 @@ function Pills({
           onClick={() => onChange(o.value)}
           className={`rounded-full border px-3.5 py-2 text-sm font-medium transition ${
             value === o.value
-              ? "border-green-600 bg-green-600 text-white"
+              ? "border-brand-600 bg-brand-600 text-white"
               : "border-white/80 bg-white/70 text-slate-700 hover:bg-white/90"
           }`}
         >
@@ -127,9 +127,9 @@ export function QuickLogForm({
         <div>
           <label className="label">Who?</label>
           {pickedLead ? (
-            <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 px-3 py-2.5">
+            <div className="flex items-center justify-between rounded-lg border border-brand-200 bg-brand-50 px-3 py-2.5">
               <span className="font-medium">{pickedLead.company}</span>
-              <button type="button" className="text-sm text-green-700" onClick={() => setPicked("")}>
+              <button type="button" className="text-sm text-brand-700" onClick={() => setPicked("")}>
                 Change
               </button>
             </div>

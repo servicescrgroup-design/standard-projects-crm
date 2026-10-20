@@ -16,6 +16,7 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { logActivity } from "@/lib/server/activities";
+import { sanitizeLayout } from "@/lib/analytics";
 import { canAssignTo, canManageGoals, canManagePeople, canSeeLead, wouldLeaveNoOwner } from "@/lib/access";
 import {
   CLOSED_STAGES,
@@ -87,7 +88,7 @@ export async function signIn(_prev: SignInResult, fd: FormData): Promise<SignInR
   }
   await db.loginAttempt.deleteMany({ where: { email } });
   await startSession({ id: user.id, passwordHash: user.passwordHash });
-  redirect("/today");
+  redirect("/dashboard");
 }
 
 export async function signOut() {
@@ -117,7 +118,7 @@ export async function acceptInvite(_prev: InviteResult, fd: FormData): Promise<I
     db.invite.deleteMany({ where: { userId: invite.userId, usedAt: null, id: { not: invite.id } } }),
   ]);
   await startSession({ id: user.id, passwordHash });
-  redirect("/today");
+  redirect("/dashboard");
 }
 
 async function inviteLink(userId: string): Promise<string> {
@@ -393,4 +394,33 @@ export async function assignLeads(_prev: FormResult, fd: FormData): Promise<Form
   const { count } = await db.lead.updateMany({ where: { id: { in: allowed } }, data: { ownerId: assignee?.id ?? null } });
   revalidateAll();
   return { ok: true, message: `${count} lead${count === 1 ? "" : "s"} ${assignee ? `assigned to ${assignee.name}` : "moved to unassigned"}` };
+}
+
+/** Saves this user's dashboard widget order and visibility (validated server-side). */
+export async function saveDashboardLayout(layout: unknown): Promise<FormResult> {
+  const user = await requireUser();
+  const clean = sanitizeLayout(layout);
+  const prefs = (user.preferences && typeof user.preferences === "object" ? user.preferences : {}) as Record<string, unknown>;
+  await db.user.update({ where: { id: user.id }, data: { preferences: { ...prefs, dashboard: clean } } });
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+/** Kanban drag: moves a lead to a stage (and position in that column). Server re-checks access. */
+export async function moveLeadOnBoard(leadId: string, stage: string, position: number | null): Promise<FormResult> {
+  const user = await requireUser();
+  const lead = await db.lead.findUnique({ where: { id: leadId }, include: { owner: true } });
+  if (!lead || !canSeeLead(user, lead)) return { error: "You can't move this deal." };
+  if (!isStage(stage)) return { error: "Unknown stage." };
+  const data: Record<string, unknown> = { boardPosition: position };
+  if (stage !== lead.stage) {
+    data.stage = stage;
+    data.stageChangedAt = new Date();
+    if (CLOSED_STAGES.includes(stage)) data.nextFollowUpAt = null;
+  }
+  await db.lead.update({ where: { id: leadId }, data });
+  revalidatePath("/deals");
+  revalidatePath("/dashboard");
+  revalidatePath(`/leads/${leadId}`);
+  return { ok: true };
 }

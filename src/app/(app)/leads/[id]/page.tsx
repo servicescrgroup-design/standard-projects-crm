@@ -90,7 +90,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           <section className="card p-4">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <h2 className="font-semibold">Prospect profile</h2>
-              {lead.priority && <span className="chip bg-green-600 text-white">Priority {lead.priority}</span>}
+              {lead.priority && <span className="chip bg-brand-600 text-white">Priority {lead.priority}</span>}
               {lead.segment && <span className="chip">{lead.segment}</span>}
               <span className="chip bg-indigo-50 text-indigo-700">{SOURCE_LABELS[lead.source as Source] ?? lead.source}</span>
               {lead.googleRating !== null && (
@@ -111,7 +111,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                   <dt className="label">Offers to pitch</dt>
                   <dd className="flex flex-wrap gap-1">
                     {lead.offersToPitch.map((o) => (
-                      <span key={o} className="chip bg-green-50 text-green-800">
+                      <span key={o} className="chip bg-brand-50 text-brand-800">
                         {o}
                       </span>
                     ))}
@@ -135,7 +135,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                   <dt className="label">Address</dt>
                   <dd>
                     <a
-                      className="text-green-700 hover:underline"
+                      className="text-brand-700 hover:underline"
                       target="_blank"
                       rel="noopener noreferrer"
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lead.company} ${lead.address}`)}`}
@@ -150,7 +150,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                   <dt className="label">Online</dt>
                   <dd className="flex flex-col gap-0.5">
                     {[lead.website, ...links(lead.socialLinks)].filter(Boolean).map((u) => (
-                      <a key={u} href={u!} target="_blank" rel="noopener noreferrer" className="truncate text-green-700 hover:underline">
+                      <a key={u} href={u!} target="_blank" rel="noopener noreferrer" className="truncate text-brand-700 hover:underline">
                         {u!.replace(/^https?:\/\/(www\.)?/, "")}
                       </a>
                     ))}

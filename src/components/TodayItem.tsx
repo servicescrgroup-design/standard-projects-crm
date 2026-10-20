@@ -24,7 +24,7 @@ export function TodayItem({ item, rank }: { item: TodayItemData; rank: number })
         <span className="mt-0.5 w-6 shrink-0 text-right text-sm font-semibold text-slate-400">{rank}</span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/leads/${item.id}`} className="font-semibold hover:text-green-700">
+            <Link href={`/leads/${item.id}`} className="font-semibold hover:text-brand-700">
               {item.company}
             </Link>
             <span className="chip">{item.stageLabel}</span>

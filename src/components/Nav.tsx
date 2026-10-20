@@ -36,12 +36,12 @@ export function SideNav({ dueCount, showSettings }: { dueCount: number; showSett
             key={it.href}
             href={it.href}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
-              active ? "bg-white/80 text-green-700 shadow-sm ring-1 ring-green-600/10" : "text-slate-600 hover:bg-white/50"
+              active ? "bg-white/80 text-brand-700 shadow-sm ring-1 ring-brand-600/10" : "text-slate-600 hover:bg-white/50"
             }`}
           >
             <Icon d={it.icon} />
             <span className="flex-1">{it.label === "Log" ? "Quick log" : it.label}</span>
-            {it.href === "/today" && dueCount > 0 && <span className="chip bg-green-100 text-green-700">{dueCount}</span>}
+            {it.href === "/today" && dueCount > 0 && <span className="chip bg-brand-100 text-brand-700">{dueCount}</span>}
           </Link>
         );
       })}
@@ -64,12 +64,12 @@ export function BottomNav({ dueCount, showSettings }: { dueCount: number; showSe
           <Link
             key={it.href}
             href={it.href}
-            className={`relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${active ? "text-green-700" : "text-slate-500"}`}
+            className={`relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${active ? "text-brand-700" : "text-slate-500"}`}
           >
             <Icon d={it.icon} />
             {it.label}
             {it.href === "/today" && dueCount > 0 && (
-              <span className="absolute right-[calc(50%-20px)] top-1 rounded-full bg-green-600 px-1.5 text-[10px] text-white">{dueCount}</span>
+              <span className="absolute right-[calc(50%-20px)] top-1 rounded-full bg-brand-600 px-1.5 text-[10px] text-white">{dueCount}</span>
             )}
           </Link>
         );
