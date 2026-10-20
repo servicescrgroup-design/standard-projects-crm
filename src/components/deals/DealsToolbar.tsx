@@ -26,7 +26,7 @@ const GROUPS = [
 ];
 
 /** Search, filter, sort, group, view switcher and Add New for the Deals page. All state lives in the URL. */
-export function DealsToolbar({ people, canAssign, isOwner, views = ["list", "kanban", "timeline"], placeholder = "Search deals…" }: { people: Person[]; canAssign: boolean; isOwner: boolean; views?: ("list" | "kanban" | "timeline" | "gallery")[]; placeholder?: string }) {
+export function DealsToolbar({ people, canAssign, isOwner, views = ["list", "kanban", "timeline"], placeholder = "Search deals…", groupable = true }: { people: Person[]; canAssign: boolean; isOwner: boolean; views?: ("list" | "kanban" | "timeline" | "gallery")[]; placeholder?: string; groupable?: boolean }) {
   const router = useRouter();
   const path = usePathname();
   const params = useSearchParams();
@@ -144,7 +144,7 @@ export function DealsToolbar({ people, canAssign, isOwner, views = ["list", "kan
         }
       </Dropdown>
 
-      {view === "list" && (
+      {groupable && view === "list" && (
         <Dropdown
           label="Group"
           align="left"

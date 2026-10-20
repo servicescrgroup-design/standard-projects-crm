@@ -50,7 +50,7 @@ function Pills({
           className={`rounded-full border px-3.5 py-2 text-sm font-medium transition ${
             value === o.value
               ? "border-brand-600 bg-brand-600 text-white"
-              : "border-white/80 bg-white/70 text-slate-700 hover:bg-white/90"
+              : "border-white/80 bg-white text-ink-2 hover:bg-white"
           }`}
         >
           {o.label}
@@ -143,19 +143,19 @@ export function QuickLogForm({
                 autoFocus
               />
               {matches.length > 0 && (
-                <ul className="mt-1 divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+                <ul className="mt-1 divide-y divide-line-soft rounded-lg border border-line bg-white">
                   {matches.map((l) => (
                     <li key={l.id}>
                       <button
                         type="button"
-                        className="w-full px-3 py-2.5 text-left hover:bg-slate-50"
+                        className="w-full px-3 py-2.5 text-left hover:bg-hover"
                         onClick={() => {
                           setPicked(l.id);
                           setSearch("");
                         }}
                       >
                         <span className="font-medium">{l.company}</span>
-                        {l.contactName && <span className="ml-2 text-sm text-slate-500">{l.contactName}</span>}
+                        {l.contactName && <span className="ml-2 text-sm text-ink-3">{l.contactName}</span>}
                       </button>
                     </li>
                   ))}
@@ -204,7 +204,7 @@ export function QuickLogForm({
             />
           </div>
           {!followUp && !customDate && (
-            <p className="mt-1 text-xs text-slate-500">Auto uses the stage cadence (e.g. 7 days after a proposal).</p>
+            <p className="mt-1 text-xs text-ink-3">Auto uses the stage cadence (e.g. 7 days after a proposal).</p>
           )}
         </div>
       )}

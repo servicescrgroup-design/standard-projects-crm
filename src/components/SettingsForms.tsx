@@ -178,7 +178,7 @@ export function PersonRow({ person, teams, isMe }: { person: Person; teams: Team
           <div className="font-medium">
             {person.name} {isMe && <span className="chip ml-1">You</span>}
           </div>
-          <div className="text-sm text-slate-500">
+          <div className="text-sm text-ink-3">
             {person.email} · {person.openLeads} open leads
             {!person.hasPassword && <span className="chip ml-2 bg-amber-50 text-amber-700">No password yet</span>}
           </div>

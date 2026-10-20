@@ -25,12 +25,12 @@ export default async function SettingsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Settings</h1>
-        <p className="text-sm text-slate-500">Set up your teams and who can see what.</p>
+        <p className="text-sm text-ink-3">Set up your teams and who can see what.</p>
       </div>
 
       <section className="card p-4">
         <h2 className="font-semibold">Import leads</h2>
-        <p className="mb-3 text-sm text-slate-500">
+        <p className="mb-3 text-sm text-ink-3">
           Upload a Notion &ldquo;Customers CRM&rdquo; export (.json). New companies arrive unassigned. Companies already in the CRM
           (same phone or name) keep their owner and stage and just get the missing Notion details. Importing the same file
           twice is safe.
@@ -39,29 +39,29 @@ export default async function SettingsPage() {
       </section>
 
       <section className="card">
-        <div className="border-b border-slate-100 px-4 py-3">
+        <div className="border-b border-line-soft px-4 py-3">
           <h2 className="font-semibold">Teams</h2>
-          <p className="text-sm text-slate-500">A team lead sees and manages everyone in their team.</p>
+          <p className="text-sm text-ink-3">A team lead sees and manages everyone in their team.</p>
         </div>
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-line-soft">
           {teams.map((t) => (
             <TeamRow key={t.id} team={t} />
           ))}
-          {teams.length === 0 && <li className="px-4 py-3 text-sm text-slate-500">No teams yet.</li>}
+          {teams.length === 0 && <li className="px-4 py-3 text-sm text-ink-3">No teams yet.</li>}
         </ul>
-        <div className="border-t border-slate-100 p-4">
+        <div className="border-t border-line-soft p-4">
           <CreateTeamForm />
         </div>
       </section>
 
       <section className="card">
-        <div className="border-b border-slate-100 px-4 py-3">
+        <div className="border-b border-line-soft px-4 py-3">
           <h2 className="font-semibold">People</h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-ink-3">
             Owners see everything. Team leads see their team and unassigned leads. Reps see only their own leads.
           </p>
         </div>
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-line-soft">
           {people.map((p) => (
             <PersonRow
               key={p.id}
@@ -71,7 +71,7 @@ export default async function SettingsPage() {
             />
           ))}
         </ul>
-        <div className="border-t border-slate-100 p-4">
+        <div className="border-t border-line-soft p-4">
           <h3 className="mb-3 text-sm font-semibold">Add a person</h3>
           <AddPersonForm teams={teams} />
         </div>

@@ -21,7 +21,7 @@ export function TodayItem({ item, rank }: { item: TodayItemData; rank: number })
   return (
     <li className="card p-4">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 w-6 shrink-0 text-right text-sm font-semibold text-slate-400">{rank}</span>
+        <span className="mt-0.5 w-6 shrink-0 text-right text-sm font-semibold text-ink-3">{rank}</span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Link href={`/leads/${item.id}`} className="font-semibold hover:text-brand-700">
@@ -29,7 +29,7 @@ export function TodayItem({ item, rank }: { item: TodayItemData; rank: number })
             </Link>
             <span className="chip">{item.stageLabel}</span>
           </div>
-          {item.contactName && <div className="text-sm text-slate-500">{item.contactName}</div>}
+          {item.contactName && <div className="text-sm text-ink-3">{item.contactName}</div>}
           <div className="mt-2 flex flex-wrap gap-1.5">
             {item.reasons.map((r) => (
               <span
@@ -85,7 +85,7 @@ export function TodayItem({ item, rank }: { item: TodayItemData; rank: number })
       )}
 
       {open && (
-        <div className="mt-4 border-t border-slate-100 pt-4">
+        <div className="mt-4 border-t border-line-soft pt-4">
           <QuickLogForm leadId={item.id} />
         </div>
       )}

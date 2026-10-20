@@ -20,7 +20,7 @@ export type LeadRow = {
 const PRIORITY_STYLE: Record<string, string> = {
   A: "bg-brand-600 text-white",
   B: "bg-brand-100 text-brand-800",
-  C: "bg-slate-100 text-slate-600",
+  C: "bg-line-soft text-ink-2",
 };
 
 function AssignButton() {
@@ -58,12 +58,12 @@ export function LeadTable({
             await action(fd);
             setSelected(new Set());
           }}
-          className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2"
+          className="flex flex-wrap items-center gap-2 border-b border-line-soft px-4 py-2"
         >
           {[...selected].map((id) => (
             <input key={id} type="hidden" name="leadIds" value={id} />
           ))}
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+          <label className="flex items-center gap-2 text-sm text-ink-2">
             <input
               type="checkbox"
               className="h-4 w-4 accent-brand-600"
@@ -75,7 +75,7 @@ export function LeadTable({
           </label>
           {selected.size > 0 && (
             <>
-              <span className="text-sm text-slate-500">→ assign to</span>
+              <span className="text-sm text-ink-3">→ assign to</span>
               <select name="ownerId" className="input w-auto py-1.5" defaultValue="" aria-label="Assign to">
                 <option value="">Unassigned</option>
                 {people.map((p) => (
@@ -91,9 +91,9 @@ export function LeadTable({
           {state.error && <span className="text-sm text-rose-600">{state.error}</span>}
         </form>
       )}
-      <ul className="divide-y divide-slate-100">
+      <ul className="divide-y divide-line-soft">
         {rows.map((l) => (
-          <li key={l.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/60">
+          <li key={l.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white">
             {canAssign && (
               <input
                 type="checkbox"
@@ -105,7 +105,7 @@ export function LeadTable({
             )}
             <span
               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-bold ${
-                l.priority ? PRIORITY_STYLE[l.priority] : "text-slate-300"
+                l.priority ? PRIORITY_STYLE[l.priority] : "text-ink-3"
               }`}
               title={l.priority ? `Priority ${l.priority}` : "No priority"}
             >
@@ -117,12 +117,12 @@ export function LeadTable({
                   {l.company}
                   {l.sourceLabel && <span className="chip ml-2 bg-indigo-50 text-indigo-700">{l.sourceLabel}</span>}
                 </div>
-                <div className="truncate text-sm text-slate-500">{l.subtitle}</div>
+                <div className="truncate text-sm text-ink-3">{l.subtitle}</div>
               </div>
               <span className="chip">{l.stageLabel}</span>
-              <span className="hidden w-24 text-right text-sm tabular-nums text-slate-600 sm:block">{l.valueLabel}</span>
+              <span className="hidden w-24 text-right text-sm tabular-nums text-ink-2 sm:block">{l.valueLabel}</span>
               {canAssign && (
-                <span className={`hidden w-28 truncate text-right text-sm sm:block ${l.ownerName ? "text-slate-600" : "font-medium text-amber-700"}`}>
+                <span className={`hidden w-28 truncate text-right text-sm sm:block ${l.ownerName ? "text-ink-2" : "font-medium text-amber-700"}`}>
                   {l.ownerName ?? "Unassigned"}
                 </span>
               )}
@@ -134,7 +134,7 @@ export function LeadTable({
             )}
           </li>
         ))}
-        {rows.length === 0 && <li className="px-4 py-10 text-center text-sm text-slate-500">No leads match.</li>}
+        {rows.length === 0 && <li className="px-4 py-10 text-center text-sm text-ink-3">No leads match.</li>}
       </ul>
     </div>
   );

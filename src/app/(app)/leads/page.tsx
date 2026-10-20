@@ -88,7 +88,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Leads</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink-3">
           {user.role === "REP"
             ? "Your leads."
             : user.role === "TEAM_LEAD"
@@ -177,7 +177,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           )}
           <div className="sm:col-span-2">
             <button className="btn-primary">Save lead</button>
-            <span className="ml-3 text-xs text-slate-500">Only the company name is required.</span>
+            <span className="ml-3 text-xs text-ink-3">Only the company name is required.</span>
           </div>
         </form>
       </details>
@@ -234,7 +234,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       </form>
 
       <div className="card overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2 text-sm text-slate-500">
+        <div className="flex items-center justify-between border-b border-line-soft px-4 py-2 text-sm text-ink-3">
           <span>
             {total.toLocaleString("en-GB")} lead{total === 1 ? "" : "s"}
             {pages > 1 && ` · page ${page} of ${pages}`}

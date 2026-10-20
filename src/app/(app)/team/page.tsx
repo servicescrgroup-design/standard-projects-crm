@@ -32,7 +32,7 @@ const STANDARD_GOALS: { metric: GoalMetric; period: "WEEK" | "MONTH" }[] = [
 function Bar({ pct }: { pct: number }) {
   const colour = pct >= 100 ? "bg-emerald-500" : pct >= 60 ? "bg-brand-500" : pct >= 30 ? "bg-amber-400" : "bg-rose-400";
   return (
-    <div className="h-1.5 w-full rounded-full bg-slate-100">
+    <div className="h-1.5 w-full rounded-full bg-line-soft">
       <div className={`h-1.5 rounded-full ${colour}`} style={{ width: `${Math.max(pct, 2)}%` }} />
     </div>
   );
@@ -144,7 +144,7 @@ export default async function TeamPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{isRep ? "My performance" : "Team"}</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink-3">
           This week from {weekStart.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}.
           Emails and meetings are counted automatically from Gmail and Calendar once connected.
         </p>
@@ -159,7 +159,7 @@ export default async function TeamPage() {
           ...(isRep ? [] : [["Unassigned leads", unassigned] as [string, number]]),
         ].map(([k, v]) => (
           <div key={k} className="card p-4">
-            <div className="text-xs text-slate-500">{k}</div>
+            <div className="text-xs text-ink-3">{k}</div>
             <div className="mt-1 text-2xl font-bold tabular-nums">{v}</div>
           </div>
         ))}
@@ -168,7 +168,7 @@ export default async function TeamPage() {
       {!isRep && rows.length === 0 && (
         <section className="card p-6 text-center">
           <p className="font-medium">No salespeople yet</p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-ink-3">
             {user.role === "OWNER" ? (
               <>
                 Create a team and add your reps in <Link href="/settings" className="text-brand-700 hover:underline">Settings</Link>.
@@ -182,13 +182,13 @@ export default async function TeamPage() {
 
       {!isRep && rows.length > 0 && (
         <section className="card">
-          <h2 className="border-b border-slate-100 px-4 py-3 font-semibold">Leaderboard</h2>
-          <ol className="divide-y divide-slate-100">
+          <h2 className="border-b border-line-soft px-4 py-3 font-semibold">Leaderboard</h2>
+          <ol className="divide-y divide-line-soft">
             {leaderboard.map((r, i) => (
               <li key={r.person.id} className="flex items-center gap-3 px-4 py-3">
-                <span className={`w-6 text-center font-bold ${i === 0 ? "text-amber-500" : "text-slate-400"}`}>{i + 1}</span>
+                <span className={`w-6 text-center font-bold ${i === 0 ? "text-amber-500" : "text-ink-3"}`}>{i + 1}</span>
                 <span className="flex-1 font-medium">{r.person.name}</span>
-                <span className="hidden text-sm text-slate-500 sm:inline">
+                <span className="hidden text-sm text-ink-3 sm:inline">
                   {r.week.CALLS} calls · {r.week.EMAILS} emails · {r.week.MEETINGS} meetings
                 </span>
                 <span className="w-32 whitespace-nowrap text-right font-semibold tabular-nums">
@@ -220,8 +220,8 @@ export default async function TeamPage() {
                   return (
                     <div key={metric + period}>
                       <div className="mb-1 flex items-center justify-between text-sm">
-                        <span className="text-slate-600">
-                          {GOAL_LABELS[metric]} <span className="text-slate-400">/ {period === "WEEK" ? "week" : "month"}</span>
+                        <span className="text-ink-2">
+                          {GOAL_LABELS[metric]} <span className="text-ink-3">/ {period === "WEEK" ? "week" : "month"}</span>
                         </span>
                         {editable ? (
                           <form action={setGoal} className="flex items-center gap-1">
@@ -234,7 +234,7 @@ export default async function TeamPage() {
                               defaultValue={g?.target ?? ""}
                               placeholder="goal"
                               inputMode="numeric"
-                              className="w-16 rounded border border-slate-200 px-1.5 py-0.5 text-right tabular-nums"
+                              className="w-16 rounded border border-line px-1.5 py-0.5 text-right tabular-nums"
                               aria-label={`${GOAL_LABELS[metric]} goal for ${r.person.name}`}
                             />
                             <button className="text-xs text-brand-700 hover:underline">Set</button>
@@ -257,45 +257,45 @@ export default async function TeamPage() {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="card">
-          <h2 className="border-b border-slate-100 px-4 py-3 font-semibold">Pipeline</h2>
+        <section className="card min-w-0">
+          <h2 className="border-b border-line-soft px-4 py-3 font-semibold">Pipeline</h2>
           <ul className="space-y-3 p-4">
             {byStage.map((s) => (
-              <li key={s.stage} className="grid grid-cols-[120px_1fr_40px_80px] items-center gap-3 text-sm">
+              <li key={s.stage} className="grid grid-cols-[96px_1fr_32px_72px] sm:grid-cols-[120px_1fr_40px_80px] items-center gap-3 text-sm">
                 <span>{STAGE_LABELS[s.stage]}</span>
-                <div className="h-2 rounded-full bg-slate-100">
+                <div className="h-2 rounded-full bg-line-soft">
                   <div
-                    className={`h-2 rounded-full ${WON_STAGES.includes(s.stage) ? "bg-emerald-500" : s.stage === "LOST" ? "bg-slate-400" : "bg-brand-500"}`}
+                    className={`h-2 rounded-full ${WON_STAGES.includes(s.stage) ? "bg-emerald-500" : s.stage === "LOST" ? "bg-ink-3" : "bg-brand-500"}`}
                     style={{ width: `${(s.count / maxCount) * 100}%` }}
                   />
                 </div>
                 <span className="text-right font-semibold tabular-nums">{s.count}</span>
-                <span className="text-right tabular-nums text-slate-500">{formatMoney(s.value)}</span>
+                <span className="text-right tabular-nums text-ink-3">{formatMoney(s.value)}</span>
               </li>
             ))}
           </ul>
-          <p className="px-4 pb-3 text-xs text-slate-400">Value = one-off + 12 × monthly.</p>
+          <p className="px-4 pb-3 text-xs text-ink-3">Value = one-off + 12 × monthly.</p>
         </section>
 
-        <section className="card">
-          <h2 className="border-b border-slate-100 px-4 py-3 font-semibold">
-            Stalled deals <span className="font-normal text-slate-500">· no contact in {STALLED_AFTER_DAYS}+ days</span>
+        <section className="card min-w-0">
+          <h2 className="border-b border-line-soft px-4 py-3 font-semibold">
+            Stalled deals <span className="font-normal text-ink-3">· no contact in {STALLED_AFTER_DAYS}+ days</span>
           </h2>
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line-soft">
             {stalled.slice(0, 10).map((l) => {
               const days = Math.floor((now.getTime() - (l.lastContactAt ?? l.createdAt).getTime()) / DAY_MS);
               return (
                 <li key={l.id}>
-                  <Link href={`/leads/${l.id}`} className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-slate-50">
-                    <span className="flex-1 truncate font-medium">{l.company}</span>
+                  <Link href={`/leads/${l.id}`} className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-hover">
+                    <span className="min-w-0 flex-1 truncate font-medium">{l.company}</span>
                     <span className="chip">{STAGE_LABELS[l.stage as Stage]}</span>
-                    <span className="w-24 truncate text-right text-slate-500">{l.owner?.name ?? "Unassigned"}</span>
+                    <span className="w-24 truncate text-right text-ink-3">{l.owner?.name ?? "Unassigned"}</span>
                     <span className="w-14 text-right font-medium text-rose-600">{days}d</span>
                   </Link>
                 </li>
               );
             })}
-            {stalled.length === 0 && <li className="px-4 py-6 text-sm text-slate-500">Nothing stalled. Nice.</li>}
+            {stalled.length === 0 && <li className="px-4 py-6 text-sm text-ink-3">Nothing stalled. Nice.</li>}
           </ul>
         </section>
       </div>

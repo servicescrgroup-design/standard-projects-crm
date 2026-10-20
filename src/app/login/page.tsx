@@ -12,7 +12,7 @@ export default async function LoginPage() {
       <div className="card w-full max-w-sm p-6">
         <div className="mb-5">
           <div className="text-lg font-bold tracking-tight">Standard Projects</div>
-          <h1 className="text-sm text-slate-500">Sign in to your sales workspace</h1>
+          <h1 className="text-sm text-ink-3">Sign in to your sales workspace</h1>
         </div>
         {isDbConfigured() ? (
           <SignInForm />
@@ -25,7 +25,7 @@ export default async function LoginPage() {
             </p>
           </div>
         )}
-        <p className="mt-4 text-xs text-slate-500">Forgot your password? Ask the owner for a new sign-in link.</p>
+        <p className="mt-4 text-xs text-ink-3">Forgot your password? Ask the owner for a new sign-in link.</p>
       </div>
     </main>
   );

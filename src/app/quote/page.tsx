@@ -43,7 +43,7 @@ export default async function QuotePage({ searchParams }: { searchParams: Promis
           Standard Projects
         </a>
         <h1 className="mt-6 text-3xl font-bold tracking-tight md:text-4xl">{COPY.title[lang]}</h1>
-        <p className="mt-2 mb-8 text-slate-600">{COPY.intro[lang]}</p>
+        <p className="mt-2 mb-8 text-ink-2">{COPY.intro[lang]}</p>
         {form}
       </div>
     </main>

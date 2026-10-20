@@ -18,7 +18,7 @@ export default async function LogPage() {
     <div className="mx-auto max-w-lg space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Quick log</h1>
-        <p className="text-sm text-slate-500">Just left a site or hung up? Log it in a few taps.</p>
+        <p className="text-sm text-ink-3">Just left a site or hung up? Log it in a few taps.</p>
       </div>
       <div className="card p-4">
         <QuickLogForm leads={leads} redirectTo="/today" />

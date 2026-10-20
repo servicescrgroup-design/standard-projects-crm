@@ -14,17 +14,17 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
       <div className="card w-full max-w-sm p-6">
         <div className="mb-5">
           <div className="text-lg font-bold tracking-tight">Standard Projects</div>
-          <h1 className="text-sm text-slate-500">
+          <h1 className="text-sm text-ink-3">
             {valid ? `Welcome, ${invite.user.name}. Choose a password.` : "This link isn&apos;t valid"}
           </h1>
         </div>
         {valid ? (
           <>
-            <p className="mb-4 text-sm text-slate-500">You&apos;ll sign in with {invite.user.email}.</p>
+            <p className="mb-4 text-sm text-ink-3">You&apos;ll sign in with {invite.user.email}.</p>
             <SetPasswordForm token={token} />
           </>
         ) : (
-          <p className="text-sm text-slate-600">It has expired or was already used. Ask the owner for a new sign-in link.</p>
+          <p className="text-sm text-ink-2">It has expired or was already used. Ask the owner for a new sign-in link.</p>
         )}
       </div>
     </main>

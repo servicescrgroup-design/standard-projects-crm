@@ -17,6 +17,7 @@ import {
 } from "@/lib/auth";
 import { logActivity } from "@/lib/server/activities";
 import { sanitizeLayout } from "@/lib/analytics";
+import { sanitizeConfig } from "@/lib/reports";
 import { canAssignTo, canManageGoals, canManagePeople, canSeeLead, wouldLeaveNoOwner } from "@/lib/access";
 import {
   CLOSED_STAGES,
@@ -29,6 +30,7 @@ import {
   isRole,
   isSource,
   isStage,
+  SOURCE_LABELS,
   toMinor,
   type GoalMetric,
   type GoalPeriod,
@@ -423,4 +425,52 @@ export async function moveLeadOnBoard(leadId: string, stage: string, position: n
   revalidatePath("/dashboard");
   revalidatePath(`/leads/${leadId}`);
   return { ok: true };
+}
+
+/** Owner records marketing spend for a lead source and month (0 removes it). */
+export async function saveSpend(_prev: FormResult, fd: FormData): Promise<FormResult> {
+  const user = await requireUser();
+  if (!canManagePeople(user)) return { error: "Only the owner can adjust spend." };
+  const source = str(fd, "source");
+  const month = str(fd, "month");
+  if (!isSource(source)) return { error: "Pick a source." };
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return { error: "Pick a month." };
+  const amount = toMinor(str(fd, "amount"));
+  if (amount === 0) {
+    await db.acquisitionSpend.deleteMany({ where: { source, month } });
+  } else {
+    await db.acquisitionSpend.upsert({
+      where: { source_month: { source, month } },
+      create: { source, month, amount, createdById: user.id },
+      update: { amount, createdById: user.id },
+    });
+  }
+  revalidatePath("/companies");
+  return { ok: true, message: amount ? `Saved ${SOURCE_LABELS[source]} spend for ${month}` : `Removed ${SOURCE_LABELS[source]} spend for ${month}` };
+}
+
+/** Creates or updates a saved report. Only its owner can change it. */
+export async function saveReport(input: { id?: string | null; title: string; config: unknown; shared: boolean }): Promise<FormResult & { id?: string }> {
+  const user = await requireUser();
+  const title = input.title.trim().slice(0, 120) || "Untitled report";
+  const config = sanitizeConfig(input.config);
+  if (input.id) {
+    const existing = await db.report.findUnique({ where: { id: input.id } });
+    if (!existing || existing.ownerId !== user.id) return { error: "You can only change your own reports. Save a copy instead." };
+    await db.report.update({ where: { id: input.id }, data: { title, config, shared: input.shared } });
+    revalidatePath("/reports");
+    return { ok: true, id: input.id, message: "Report saved" };
+  }
+  const created = await db.report.create({ data: { title, config, shared: input.shared, ownerId: user.id } });
+  revalidatePath("/reports");
+  return { ok: true, id: created.id, message: "Report saved" };
+}
+
+export async function deleteReport(id: string): Promise<FormResult> {
+  const user = await requireUser();
+  const existing = await db.report.findUnique({ where: { id } });
+  if (!existing || existing.ownerId !== user.id) return { error: "You can only delete your own reports." };
+  await db.report.delete({ where: { id } });
+  revalidatePath("/reports");
+  return { ok: true, message: "Report deleted" };
 }

@@ -29,6 +29,7 @@ model User {
   activities   Activity[]
   goals        Goal[]
   invites      Invite[]
+  reports      Report[]
   passwordHash String? // null until the person sets a password via their invite link
   preferences  Json       @default("{}") // per-user UI settings, e.g. dashboard widget order
   createdAt    DateTime   @default(now())
@@ -135,4 +136,35 @@ model Goal {
   target Int
 
   @@unique([userId, metric, period])
+}
+
+/**
+ * Marketing spend per lead source per month, entered by the owner. Used for customer acquisition cost.
+ */
+model AcquisitionSpend {
+  id          String   @id @default(cuid())
+  source      String // see SOURCES in src/lib/domain.ts
+  month       String // YYYY-MM
+  amount      Int // minor units (satang)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([source, month])
+}
+
+/**
+ * A saved report-builder configuration.
+ */
+model Report {
+  id        String   @id @default(cuid())
+  title     String
+  config    Json
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  shared    Boolean  @default(false) // visible to everyone in the workspace (results still respect each viewer's access)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
 }

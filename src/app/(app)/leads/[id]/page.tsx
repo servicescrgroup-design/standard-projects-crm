@@ -47,13 +47,13 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="space-y-5">
-      <Link href="/leads" className="text-sm text-slate-500 hover:text-slate-900">
+      <Link href="/leads" className="text-sm text-ink-3 hover:text-ink">
         ← Leads
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{lead.company}</h1>
-          <p className="text-slate-500">
+          <p className="text-ink-3">
             {[lead.contactName, lead.location, lead.industry].filter(Boolean).join(" · ")}
           </p>
         </div>
@@ -79,7 +79,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           ["Unanswered touches", String(lead.unansweredTouches)],
         ].map(([k, v]) => (
           <div key={k} className="card p-3">
-            <div className="text-xs text-slate-500">{k}</div>
+            <div className="text-xs text-ink-3">{k}</div>
             <div className="mt-0.5 font-semibold">{v}</div>
           </div>
         ))}
@@ -184,12 +184,12 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               {(lead.sourceLink || lead.externalRef?.startsWith("https://app.notion.com")) && (
                 <div className="flex gap-4 sm:col-span-2">
                   {lead.sourceLink && (
-                    <a href={lead.sourceLink} target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:underline">
+                    <a href={lead.sourceLink} target="_blank" rel="noopener noreferrer" className="text-xs text-ink-3 hover:underline">
                       Where we found them ↗
                     </a>
                   )}
                   {lead.externalRef?.startsWith("https://app.notion.com") && (
-                    <a href={lead.externalRef} target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:underline">
+                    <a href={lead.externalRef} target="_blank" rel="noopener noreferrer" className="text-xs text-ink-3 hover:underline">
                       Open in Notion ↗
                     </a>
                   )}
@@ -204,8 +204,8 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           </section>
 
           <section className="card">
-            <h2 className="border-b border-slate-100 px-4 py-3 font-semibold">History</h2>
-            <ul className="divide-y divide-slate-100">
+            <h2 className="border-b border-line-soft px-4 py-3 font-semibold">History</h2>
+            <ul className="divide-y divide-line-soft">
               {lead.activities.map((a) => (
                 <li key={a.id} className="flex gap-3 px-4 py-3">
                   <div className="min-w-0 flex-1">
@@ -216,15 +216,15 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                         <span className="chip bg-indigo-50 text-indigo-700">Auto · {SOURCE_LABEL[a.source]}</span>
                       )}
                     </div>
-                    {a.summary && <p className="mt-0.5 text-sm text-slate-600">{a.summary}</p>}
+                    {a.summary && <p className="mt-0.5 text-sm text-ink-2">{a.summary}</p>}
                   </div>
-                  <div className="shrink-0 text-right text-xs text-slate-500">
+                  <div className="shrink-0 text-right text-xs text-ink-3">
                     <div>{fmt(a.occurredAt)}</div>
                     <div>{a.user?.name}</div>
                   </div>
                 </li>
               ))}
-              {lead.activities.length === 0 && <li className="px-4 py-6 text-sm text-slate-500">Nothing logged yet.</li>}
+              {lead.activities.length === 0 && <li className="px-4 py-6 text-sm text-ink-3">Nothing logged yet.</li>}
             </ul>
           </section>
         </div>
@@ -242,7 +242,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-slate-500">Moves forward automatically as you log. Change it here to override.</p>
+              <p className="mt-1 text-xs text-ink-3">Moves forward automatically as you log. Change it here to override.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -294,7 +294,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               </div>
             ) : (
               <div className="text-sm">
-                <span className="text-slate-500">Owner: </span>
+                <span className="text-ink-3">Owner: </span>
                 {lead.owner?.name ?? "Unassigned"}
               </div>
             )}

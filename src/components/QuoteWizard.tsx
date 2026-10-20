@@ -104,7 +104,7 @@ function Choice({
   return (
     <label
       className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition ${
-        checked ? "border-brand-600 bg-brand-50 text-brand-900" : "border-white/80 bg-white/70 hover:bg-white/90"
+        checked ? "border-brand-600 bg-brand-50 text-brand-900" : "border-white/80 bg-white hover:bg-white"
       }`}
     >
       <input
@@ -163,7 +163,7 @@ export function QuoteWizard({ initialLang }: { initialLang: Lang }) {
           type="button"
           aria-pressed={lang === l}
           onClick={() => chooseLang(l)}
-          className={`rounded-md px-2.5 py-1 ${lang === l ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100"}`}
+          className={`rounded-md px-2.5 py-1 ${lang === l ? "bg-ink text-white" : "text-ink-3 hover:bg-hover"}`}
           lang={l}
         >
           {l === "en" ? "EN" : "ไทย"}
@@ -179,7 +179,7 @@ export function QuoteWizard({ initialLang }: { initialLang: Lang }) {
           ✓
         </div>
         <h2 className="text-xl font-semibold">{T.doneTitle[lang]}</h2>
-        <p className="mt-2 text-slate-600">{T.doneText[lang]}</p>
+        <p className="mt-2 text-ink-2">{T.doneText[lang]}</p>
       </div>
     );
   }
@@ -220,13 +220,13 @@ export function QuoteWizard({ initialLang }: { initialLang: Lang }) {
       <input type="hidden" name="lang" value={lang} />
       <div className="mb-6">
         <div className="mb-3">{langSwitch}</div>
-        <div className="mb-2 flex justify-between text-xs font-medium text-slate-500">
+        <div className="mb-2 flex justify-between text-xs font-medium text-ink-3">
           <span>
             {T.step[lang]} {step + 1} {T.of[lang]} {STEP_FIELDS.length}
           </span>
           <span>{T.stepTitles[lang][step]}</span>
         </div>
-        <div className="h-1.5 rounded-full bg-slate-100">
+        <div className="h-1.5 rounded-full bg-line-soft">
           <div
             className="h-1.5 rounded-full bg-brand-600 transition-all"
             style={{ width: `${((step + 1) / STEP_FIELDS.length) * 100}%` }}
@@ -239,7 +239,7 @@ export function QuoteWizard({ initialLang }: { initialLang: Lang }) {
 
       <section hidden={step !== 0} className="space-y-3">
         <h2 className="text-lg font-semibold">{T.q1[lang]}</h2>
-        <p className="text-sm text-slate-500">{T.q1hint[lang]}</p>
+        <p className="text-sm text-ink-3">{T.q1hint[lang]}</p>
         <div className="grid gap-2 sm:grid-cols-2">
           {QUOTE_SERVICES.map((o) => (
             <Choice
@@ -314,7 +314,7 @@ export function QuoteWizard({ initialLang }: { initialLang: Lang }) {
           <h3 className="text-sm font-semibold">{T.reach[lang]}</h3>
           {radios("contactPref", QUOTE_CONTACT_PREFS)}
         </div>
-        <p className="text-xs text-slate-500">{T.privacy[lang]}</p>
+        <p className="text-xs text-ink-3">{T.privacy[lang]}</p>
       </section>
 
       {(stepError || state.error) && (
