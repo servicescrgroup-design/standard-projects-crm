@@ -174,7 +174,7 @@ export function PersonRow({ person, teams, isMe }: { person: Person; teams: Team
         <form ref={updateRef} action={update} className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="userId" value={person.id} />
           <Select name="role" ariaLabel="Role" defaultValue={person.role} className="w-auto min-w-32" menuWidth={180} options={ROLE_OPTIONS.map((r) => ({ value: r.value, label: r.label.split(" (")[0] }))} />
-          <div className="w-40">
+          <div className="min-w-40 max-w-full">
             <TeamSelect teams={teams} defaultValue={person.teamId} />
           </div>
           <Submit className="btn-ghost">Save</Submit>
