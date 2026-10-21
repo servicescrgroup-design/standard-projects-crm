@@ -5,13 +5,14 @@ import { Send } from "lucide-react";
 import { approveAndSend, deleteDraft, saveEmailDraft, type EmailResult } from "@/app/emailActions";
 import { toast } from "@/components/ui/Toaster";
 import { Select } from "@/components/ui/Select";
-import { missingFields, renderTemplate, type MergeContext } from "@/lib/templates";
+import { languageInfo, missingFields, rankTemplates, renderTemplate, targetLabel, type MergeContext } from "@/lib/templates";
 
 export type ThreadOption = { activityId: string; subject: string };
-export type TemplateOption = { id: string; name: string; language: string; subject: string; body: string };
+export type TemplateOption = { id: string; name: string; language: string; subject: string; body: string; countries: string[]; industries: string[] };
+export type LeadTarget = { country: string | null; industry: string | null };
 
 /** "Send email" on a lead. Reps submit for approval; owners and team leads can send straight away. */
-export function EmailComposer({ leadId, defaultTo, canSend, threads, hasMailbox, templates = [], merge = {} }: { leadId: string; defaultTo: string; canSend: boolean; threads: ThreadOption[]; hasMailbox: boolean; templates?: TemplateOption[]; merge?: MergeContext }) {
+export function EmailComposer({ leadId, defaultTo, canSend, threads, hasMailbox, templates = [], merge = {}, target = { country: null, industry: null } }: { leadId: string; defaultTo: string; canSend: boolean; threads: ThreadOption[]; hasMailbox: boolean; templates?: TemplateOption[]; merge?: MergeContext; target?: LeadTarget }) {
   const [state, action, pending] = useActionState<EmailResult, FormData>(saveEmailDraft, {});
   const [replyTo, setReplyTo] = useState("");
   const [subject, setSubject] = useState("");
@@ -19,6 +20,9 @@ export function EmailComposer({ leadId, defaultTo, canSend, threads, hasMailbox,
   const [templateId, setTemplateId] = useState("");
   const [missing, setMissing] = useState<string[]>([]);
   const form = useRef<HTMLFormElement>(null);
+  // Best fit for this lead's country and industry first; templates written for other countries/industries last.
+  const ranked = rankTemplates(templates, target);
+  const suggested = ranked.filter((t) => t.fit > 0).slice(0, 4);
 
   // Fill subject and message from a template, with this lead's details merged in.
   const applyTemplate = (id: string) => {
@@ -54,8 +58,20 @@ export function EmailComposer({ leadId, defaultTo, canSend, threads, hasMailbox,
       <input type="hidden" name="leadId" value={leadId} />
       {templates.length > 0 && (
         <div>
-          <span className="label">Start from a template</span>
-          <Select ariaLabel="Template" value={templateId} placeholder="Choose a template…" onChange={applyTemplate} options={templates.map((t) => ({ value: t.id, label: t.name, hint: t.language === "th" ? "TH" : "EN" }))} />
+          {suggested.length > 0 && (
+            <div className="mb-2">
+              <span className="label">Templates for {[target.country, target.industry].filter(Boolean).join(" · ")}</span>
+              <div className="flex flex-wrap gap-1.5">
+                {suggested.map((t) => (
+                  <button key={t.id} type="button" onClick={() => applyTemplate(t.id)} className={`chip hover:bg-brand-50 hover:text-brand-700 ${templateId === t.id ? "bg-brand-600 text-white hover:bg-brand-600 hover:text-white" : ""}`}>
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <span className="label">{suggested.length ? "Or choose any template" : "Start from a template"}</span>
+          <Select ariaLabel="Template" value={templateId} placeholder="Choose a template…" onChange={applyTemplate} options={ranked.map((t) => ({ value: t.id, label: t.name, hint: t.fit < 0 ? `for ${targetLabel(t)}` : languageInfo(t.language).short }))} />
           {missing.length > 0 && <p className="mt-1 text-xs text-amber-700">This lead has no {missing.map((m) => m.replace("_", " ")).join(", ")}. Check the text before sending.</p>}
         </div>
       )}

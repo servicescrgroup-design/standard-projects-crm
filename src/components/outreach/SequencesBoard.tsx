@@ -6,8 +6,9 @@ import { ArrowDown, ArrowUp, Mail, Pencil, Play, Plus, Trash2, X } from "lucide-
 import { runSequencesNow, saveSequence } from "@/app/outreachActions";
 import { Select } from "@/components/ui/Select";
 import { toast } from "@/components/ui/Toaster";
+import { languageInfo } from "@/lib/templates";
 
-export type TemplateView = { id: string; name: string; category: string | null; language: string; subject: string; body: string };
+export type TemplateView = { id: string; name: string; category: string | null; language: string; subject: string; body: string; countries: string[]; industries: string[] };
 export type SequenceView = {
   id: string;
   name: string;
@@ -24,7 +25,7 @@ export function SequencesBoard({ sequences, templates, canEdit, canRunNow }: { s
   const router = useRouter();
   const [editing, setEditing] = useState<Draft | null>(null);
   const [pending, start] = useTransition();
-  const tplOptions = templates.map((t) => ({ value: t.id, label: `${t.name}${t.language === "th" ? " (TH)" : ""}`, hint: t.category ?? undefined }));
+  const tplOptions = templates.map((t) => ({ value: t.id, label: `${t.name}${t.language === "en" ? "" : ` (${languageInfo(t.language).short})`}`, hint: t.category ?? undefined }));
 
   const save = () =>
     editing &&

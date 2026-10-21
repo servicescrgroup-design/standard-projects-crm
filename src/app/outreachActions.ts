@@ -10,6 +10,7 @@ import { approveEnrollments, enrollLeads, runDueSequences, stopEnrollment } from
 import { createQuote, sendQuote, updateQuote, visibleQuote } from "@/lib/server/quotes";
 import { assignInboundLeads, saveAssignment } from "@/lib/server/assignment";
 import { sanitizeAssignment } from "@/lib/assignment";
+import { templateLanguage } from "@/lib/templates";
 import { toMinor } from "@/lib/domain";
 
 export type ActionResult = { ok?: boolean; error?: string; message?: string };
@@ -24,15 +25,20 @@ async function origin() {
 
 // ---------- Templates ----------
 
-export async function saveTemplate(input: { id?: string | null; name: string; category: string; language: string; subject: string; body: string }): Promise<ActionResult & { id?: string }> {
+const targetList = (v: unknown): string[] =>
+  Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string").map((x) => x.trim().slice(0, 80)).filter(Boolean))].slice(0, 40) : [];
+
+export async function saveTemplate(input: { id?: string | null; name: string; category: string; language: string; subject: string; body: string; countries?: string[]; industries?: string[] }): Promise<ActionResult & { id?: string }> {
   const user = await requireUser();
   if (!canSendEmail(user)) return { error: "Only owners and team leads can edit templates" };
   const data = {
     name: input.name.trim().slice(0, 120),
     category: input.category.trim().slice(0, 60) || null,
-    language: input.language === "th" ? "th" : "en",
+    language: templateLanguage(input.language),
     subject: input.subject.replace(/[\r\n]+/g, " ").trim().slice(0, 300),
     body: input.body.trim().slice(0, 20_000),
+    countries: targetList(input.countries),
+    industries: targetList(input.industries),
   };
   if (!data.name || !data.subject || !data.body) return { error: "Name, subject and message are all needed" };
   const row = input.id ? await db.emailTemplate.update({ where: { id: input.id }, data }) : await db.emailTemplate.create({ data: { ...data, createdById: user.id } });

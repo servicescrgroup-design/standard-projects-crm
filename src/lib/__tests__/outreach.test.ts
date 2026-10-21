@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { firstName, leadMergeContext, missingFields, renderTemplate } from "../templates";
+import { OPT_OUT_LINE, firstName, leadMergeContext, missingFields, rankTemplates, renderTemplate, starterTemplate, templateFit, templateLanguage } from "../templates";
 import { nextRunAt, stopReason } from "../sequences";
 import { quoteNumber, quoteTotals, sanitizeItems, isExpired } from "../quotes";
 import { pickAssignee, sanitizeAssignment, waitingFor } from "../assignment";
@@ -102,5 +102,37 @@ describe("duplicates", () => {
     expect(findDuplicates({ email: "info@acme.com" }, existing)[0].why).toEqual(["same email"]);
     expect(findDuplicates({ website: "acme.com/contact" }, existing)[0].id).toBe("2");
     expect(findDuplicates({ company: "Spa" }, existing)).toEqual([]);
+  });
+});
+
+describe("country and industry templates", () => {
+  const general = { id: "g", countries: [], industries: [] };
+  const de = { id: "de", countries: ["Germany"], industries: [] };
+  const deRest = { id: "deRest", countries: ["Germany"], industries: ["Restaurant"] };
+  const cafe = { id: "cafe", countries: [], industries: ["Café"] };
+  const us = { id: "us", countries: ["United States"], industries: [] };
+
+  it("ranks the most specific fit first and pushes other countries last", () => {
+    const r = rankTemplates([general, us, cafe, de, deRest], { country: "Germany", industry: "restaurant" });
+    expect(r.map((t) => t.id)).toEqual(["deRest", "de", "g", "us", "cafe"]);
+    expect(r.map((t) => t.fit)).toEqual([3, 2, 0, -1, -1]);
+  });
+
+  it("treats a lead with no country as not matching country templates", () => {
+    expect(templateFit(de, { country: null, industry: null })).toBe(-1);
+    expect(templateFit(general, { country: null, industry: null })).toBe(0);
+  });
+
+  it("starts German, Thai and English templates from the country", () => {
+    expect(starterTemplate({ country: "Austria", industry: "Café", category: "Intro" })).toMatchObject({ language: "de", name: "Intro – Austria – Café" });
+    expect(starterTemplate({ country: "Thailand", industry: null, category: "Follow-up" }).language).toBe("th");
+    const us1 = starterTemplate({ country: "United States", industry: "Dental clinic", category: "Proposal" });
+    expect(us1.language).toBe("en");
+    expect(us1.body).toContain("dental clinic businesses");
+  });
+
+  it("has a German opt-out line", () => {
+    expect(OPT_OUT_LINE[templateLanguage("de")]).toMatch(/Nein danke/);
+    expect(templateLanguage("xx")).toBe("en");
   });
 });

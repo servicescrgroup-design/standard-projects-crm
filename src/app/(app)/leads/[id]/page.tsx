@@ -57,7 +57,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
     db.emailDraft.findMany({ where: { leadId: lead.id, status: { not: "SENT" } }, include: { author: { select: { name: true } } }, orderBy: { updatedAt: "desc" } }),
     db.mailbox.count({ where: { userId: user.id, status: "ACTIVE" } }),
     db.twilioConnection.count({ where: { userId: user.id } }),
-    db.emailTemplate.findMany({ orderBy: [{ language: "asc" }, { name: "asc" }], select: { id: true, name: true, language: true, subject: true, body: true } }),
+    db.emailTemplate.findMany({ orderBy: [{ language: "asc" }, { name: "asc" }], select: { id: true, name: true, language: true, subject: true, body: true, countries: true, industries: true } }),
     db.sequence.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     db.sequenceEnrollment.findMany({ where: { leadId: lead.id }, orderBy: { updatedAt: "desc" }, include: { sequence: { select: { name: true, _count: { select: { steps: true } } } } } }),
     db.quote.findMany({ where: { leadId: lead.id }, orderBy: { createdAt: "desc" } }),
@@ -232,6 +232,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
             hasMailbox={myMailboxes > 0}
             templates={templates}
             merge={merge}
+            target={{ country, industry: lead.segment ?? lead.industry }}
             sequenceBox={
               <LeadSequenceBox
                 leadId={lead.id}

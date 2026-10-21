@@ -94,3 +94,12 @@ export function countryOfLead(lead: { location?: string | null; industry?: strin
     (thaiName ? { code: "TH", name: NAMES.TH, flag: flagOf("TH") } : null)
   );
 }
+
+/** Every country the CRM knows, A–Z (for pickers). */
+export const COUNTRY_LIST: Country[] = Object.entries(NAMES)
+  .map(([code, name]) => ({ code, name, flag: flagOf(code) }))
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+export function countryByName(name: string | null | undefined): Country | null {
+  return COUNTRY_LIST.find((c) => c.name === name) ?? null;
+}

@@ -96,6 +96,73 @@ Standard Projects · standardprojects.org`,
 
 {{agent_name}}`,
   },
+  {
+    key: "intro_de",
+    name: "Website-Idee (Deutsch)",
+    category: "Intro",
+    language: "de",
+    subject: "Kurze Idee zur Website von {{company}}",
+    body: `Guten Tag,
+
+ich bin auf {{company}} gestoßen und habe mir Ihren Online-Auftritt angesehen. Mit einer modernen Website könnten Sie meiner Meinung nach deutlich mehr Anfragen und Buchungen gewinnen.
+
+Wir sind Standard Projects, ein kleines Studio für schnelle, mobilfreundliche Websites. Für Unternehmen wie Ihres bedeutet das meist:
+- eine klare Website, die auf jedem Smartphone einwandfrei funktioniert
+- Online-Buchung oder Kontaktformulare, die direkt in Ihrem Postfach landen
+- bessere Sichtbarkeit bei Google und Google Maps
+
+Hätten Sie nächste Woche Zeit für ein kostenloses, 15-minütiges Gespräch? Ich zeige Ihnen gern ein paar konkrete Ideen für {{company}} – ganz unverbindlich. Das Gespräch können wir gern auch auf Englisch führen.
+
+Mit freundlichen Grüßen
+{{agent_name}}
+Standard Projects · standardprojects.org`,
+  },
+  {
+    key: "followup_de",
+    name: "Nachfassen (Deutsch)",
+    category: "Follow-up",
+    language: "de",
+    subject: "Re: Kurze Idee zur Website von {{company}}",
+    body: `Guten Tag,
+
+ich wollte meine letzte Nachricht kurz wieder nach oben holen. Falls das einfacher ist als ein Gespräch, schicke ich Ihnen gern ein paar Beispiele von Websites, die wir für ähnliche Unternehmen umgesetzt haben.
+
+Viele Grüße
+{{agent_name}}`,
+  },
+  {
+    key: "case_de",
+    name: "Referenzen (Deutsch)",
+    category: "Case study",
+    language: "de",
+    subject: "Wie ähnliche Unternehmen mehr Buchungen gewinnen",
+    body: `Guten Tag,
+
+wir haben Websites und Buchungssysteme für Spas, Cafés, Geschäfte und Dienstleister umgesetzt. Einige Beispiele finden Sie hier: standardprojects.org/portfolio
+
+Für {{company}} könnten wir etwas Ähnliches umsetzen – zu einem vorab vereinbarten Festpreis, und die Website gehört anschließend vollständig Ihnen.
+
+Soll ich Ihnen ein kurzes, unverbindliches Angebot zusammenstellen?
+
+Mit freundlichen Grüßen
+{{agent_name}}
+Standard Projects`,
+  },
+  {
+    key: "breakup_de",
+    name: "Letzte E-Mail (Deutsch)",
+    category: "Break-up",
+    language: "de",
+    subject: "Meine letzte Nachricht",
+    body: `Guten Tag,
+
+da ich nichts von Ihnen gehört habe, gehe ich davon aus, dass das Thema gerade nicht passt, und melde mich daher nicht weiter.
+
+Falls eine neue Website für {{company}} später interessant wird, antworten Sie einfach auf diese E-Mail und ich melde mich umgehend.
+
+Alles Gute
+{{agent_name}}`,
+  },
 ] as const;
 
 export const DEFAULT_SEQUENCES = [
@@ -115,6 +182,16 @@ export const DEFAULT_SEQUENCES = [
     steps: [
       { template: "intro_th", waitDays: 0 },
       { template: "followup_th", waitDays: 4 },
+    ],
+  },
+  {
+    name: "Website-Ansprache (Deutsch, 4 E-Mails)",
+    description: "For German-speaking leads (Germany, Austria, Switzerland): intro, a nudge after 3 days, references after a week, and a polite last email.",
+    steps: [
+      { template: "intro_de", waitDays: 0 },
+      { template: "followup_de", waitDays: 3 },
+      { template: "case_de", waitDays: 4 },
+      { template: "breakup_de", waitDays: 7 },
     ],
   },
 ];

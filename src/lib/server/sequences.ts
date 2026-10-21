@@ -8,7 +8,7 @@ import { leadScope, canSendEmail } from "../access";
 import { countryOfLead } from "../countries";
 import { replySubject } from "../mail/mime";
 import { EMAIL_RESTRICTED_COUNTRIES, SEQUENCE_LIMITS, nextRunAt, stopReason } from "../sequences";
-import { OPT_OUT_LINE, leadMergeContext, renderTemplate } from "../templates";
+import { OPT_OUT_LINE, leadMergeContext, renderTemplate, templateLanguage } from "../templates";
 import { DEFAULT_TEMPLATES, DEFAULT_SEQUENCES } from "../outreachDefaults";
 
 /** First visit to Outreach: add the starter templates and sequences (English + Thai). */
@@ -171,7 +171,7 @@ export async function runDueSequences(budgetMs = 30_000): Promise<RunResult> {
     }
 
     const step = steps[e.stepIndex];
-    const lang = step.template.language === "th" ? "th" : "en";
+    const lang = templateLanguage(step.template.language);
     const ctx = leadMergeContext(e.lead, { name: author.name, email: mb.address });
     // Follow-ups go in the same thread as the first email.
     const previous = e.stepIndex > 0

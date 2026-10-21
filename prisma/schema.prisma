@@ -266,7 +266,10 @@ model EmailTemplate {
   id          String         @id @default(cuid())
   name        String
   category    String? // Intro | Follow-up | Case study | Break-up | …
-  language    String         @default("en") // en | th
+  language    String         @default("en") // en | th | de
+  /// Which leads it's written for (country names, industries). Empty = any.
+  countries   String[]       @default([])
+  industries  String[]       @default([])
   subject     String
   body        String
   createdById String?

@@ -6,6 +6,7 @@ import { ensureOutreachDefaults } from "@/lib/server/sequences";
 import { enrollmentLabel } from "@/lib/sequences";
 import { SequencesBoard, type SequenceView, type TemplateView } from "@/components/outreach/SequencesBoard";
 import { TemplatesBoard } from "@/components/outreach/TemplatesBoard";
+import { SEGMENTS } from "@/lib/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function OutreachPage({ searchParams }: { searchParams: Pro
   await ensureOutreachDefaults(user.id);
   const canEdit = canSendEmail(user);
 
-  const [templates, sequences, counts, recent] = await Promise.all([
+  const [templates, sequences, counts, recent, segments] = await Promise.all([
     db.emailTemplate.findMany({ orderBy: [{ language: "asc" }, { category: "asc" }, { name: "asc" }] }),
     db.sequence.findMany({ orderBy: { createdAt: "asc" }, include: { steps: { orderBy: { position: "asc" }, include: { template: { select: { name: true } } } } } }),
     db.sequenceEnrollment.groupBy({ by: ["sequenceId", "status"], where: { lead: leadScope(user) }, _count: { _all: true } }),
@@ -26,10 +27,13 @@ export default async function OutreachPage({ searchParams }: { searchParams: Pro
       take: 60,
       include: { lead: { select: { id: true, company: true } }, sequence: { select: { name: true, steps: { select: { id: true } } } } },
     }),
+    db.lead.groupBy({ by: ["segment"], where: { segment: { not: null } }, _count: { _all: true } }),
   ]);
+  // Industries for the template creator: the ones leads actually have (most common first), then the standard list.
+  const industries = [...new Set([...segments.sort((a, b) => b._count._all - a._count._all).map((s) => s.segment!), ...SEGMENTS])];
   const enrollers = await db.user.findMany({ where: { id: { in: [...new Set(recent.map((r) => r.enrolledById))] } }, select: { id: true, name: true } });
 
-  const tplViews: TemplateView[] = templates.map((t) => ({ id: t.id, name: t.name, category: t.category, language: t.language, subject: t.subject, body: t.body }));
+  const tplViews: TemplateView[] = templates.map((t) => ({ id: t.id, name: t.name, category: t.category, language: t.language, subject: t.subject, body: t.body, countries: t.countries, industries: t.industries }));
   const seqViews: SequenceView[] = sequences.map((s) => {
     const stat = (st: string) => counts.find((c) => c.sequenceId === s.id && c.status === st)?._count._all ?? 0;
     return {
@@ -101,7 +105,7 @@ export default async function OutreachPage({ searchParams }: { searchParams: Pro
           </section>
         </>
       ) : (
-        <TemplatesBoard templates={tplViews} canEdit={canEdit} />
+        <TemplatesBoard templates={tplViews} canEdit={canEdit} industries={industries} />
       )}
     </div>
   );
