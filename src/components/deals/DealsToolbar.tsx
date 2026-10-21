@@ -5,10 +5,14 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpDown, Columns3, Filter, GanttChart, Group, List, Plus, Search, X } from "lucide-react";
 import { Dropdown, menuItemClass } from "@/components/ui/Dropdown";
+import { MultiSelect, Select } from "@/components/ui/Select";
 import { createLead } from "@/app/actions";
 import { PRIORITIES, SEGMENTS, SOURCES, SOURCE_LABELS, STAGES, STAGE_LABELS } from "@/lib/domain";
 
 export type Person = { id: string; name: string };
+export type ToolbarFacets = { countries: { name: string; flag: string; count: number }[]; industries: { name: string; count: number }[] };
+
+const list = (v: string | null) => (v ? v.split(",").filter(Boolean) : []);
 
 const SORTS = [
   { v: "board", l: "Board order" },
@@ -26,7 +30,7 @@ const GROUPS = [
 ];
 
 /** Search, filter, sort, group, view switcher and Add New for the Deals page. All state lives in the URL. */
-export function DealsToolbar({ people, canAssign, isOwner, views = ["list", "kanban", "timeline"], placeholder = "Search deals…", groupable = true }: { people: Person[]; canAssign: boolean; isOwner: boolean; views?: ("list" | "kanban" | "timeline" | "gallery")[]; placeholder?: string; groupable?: boolean }) {
+export function DealsToolbar({ people, canAssign, isOwner, views = ["list", "kanban", "timeline"], placeholder = "Search deals…", groupable = true, facets }: { people: Person[]; canAssign: boolean; isOwner: boolean; views?: ("list" | "kanban" | "timeline" | "gallery")[]; placeholder?: string; groupable?: boolean; facets?: ToolbarFacets }) {
   const router = useRouter();
   const path = usePathname();
   const params = useSearchParams();
@@ -56,7 +60,7 @@ export function DealsToolbar({ people, canAssign, isOwner, views = ["list", "kan
   }, [q]);
 
   const view = params.get("view") ?? views[0];
-  const activeFilters = ["owner", "segment", "priority", "stage", "status", "source"].filter((k) => params.get(k));
+  const activeFilters = ["owner", "segment", "country", "priority", "stage", "status", "source"].filter((k) => params.get(k));
   const VIEW_ICON = { list: List, kanban: Columns3, timeline: GanttChart, gallery: Columns3 } as const;
   const VIEW_LABEL = { list: "List", kanban: "Kanban", timeline: "Timeline", gallery: "Gallery" } as const;
 
@@ -78,44 +82,79 @@ export function DealsToolbar({ people, canAssign, isOwner, views = ["list", "kan
         )}
       >
         {() => (
-          <div className="w-64 space-y-3 p-2">
-            <label className="block">
+          <div className="w-72 space-y-3 p-2">
+            {facets && (
+              <>
+                <div>
+                  <span className="label">Country</span>
+                  <MultiSelect
+                    ariaLabel="Countries"
+                    placeholder="All countries"
+                    values={list(params.get("country"))}
+                    onChange={(v) => set({ country: v.join(",") || null })}
+                    options={facets.countries.map((c) => ({ value: c.name, label: `${c.flag} ${c.name}`, hint: c.count.toLocaleString("en-GB") }))}
+                  />
+                </div>
+                <div>
+                  <span className="label">Industry</span>
+                  <MultiSelect
+                    ariaLabel="Industries"
+                    placeholder="All industries"
+                    values={list(params.get("segment"))}
+                    onChange={(v) => set({ segment: v.join(",") || null })}
+                    options={facets.industries.map((i) => ({ value: i.name, label: i.name === "none" ? "No industry set" : i.name, hint: i.count.toLocaleString("en-GB") }))}
+                  />
+                </div>
+              </>
+            )}
+            <div>
               <span className="label">Stage</span>
-              <select className="input" value={params.get("stage") ?? ""} onChange={(e) => set({ stage: e.target.value || null, status: null })}>
-                <option value="">All stages</option>
-                {STAGES.map((s) => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
-              </select>
-            </label>
-            <label className="block">
+              <Select
+                ariaLabel="Stage"
+                value={params.get("stage") ?? ""}
+                onChange={(v) => set({ stage: v || null, status: null })}
+                options={[{ value: "", label: "All stages" }, ...STAGES.map((s) => ({ value: s, label: STAGE_LABELS[s] }))]}
+              />
+            </div>
+            <div>
               <span className="label">Priority</span>
-              <select className="input" value={params.get("priority") ?? ""} onChange={(e) => set({ priority: e.target.value || null })}>
-                <option value="">Any</option>
-                {PRIORITIES.map((p) => <option key={p} value={p}>Priority {p}</option>)}
-              </select>
-            </label>
-            <label className="block">
-              <span className="label">Segment</span>
-              <select className="input" value={params.get("segment") ?? ""} onChange={(e) => set({ segment: e.target.value || null })}>
-                <option value="">All segments</option>
-                {SEGMENTS.map((s) => <option key={s}>{s}</option>)}
-              </select>
-            </label>
-            <label className="block">
+              <Select
+                ariaLabel="Priority"
+                value={params.get("priority") ?? ""}
+                onChange={(v) => set({ priority: v || null })}
+                options={[{ value: "", label: "Any priority" }, ...PRIORITIES.map((p) => ({ value: p, label: `Priority ${p}` }))]}
+              />
+            </div>
+            {!facets && (
+              <div>
+                <span className="label">Industry</span>
+                <Select
+                  ariaLabel="Industry"
+                  value={params.get("segment") ?? ""}
+                  onChange={(v) => set({ segment: v || null })}
+                  options={[{ value: "", label: "All industries" }, ...SEGMENTS.map((s) => ({ value: s, label: s }))]}
+                />
+              </div>
+            )}
+            <div>
               <span className="label">Source</span>
-              <select className="input" value={params.get("source") ?? ""} onChange={(e) => set({ source: e.target.value || null })}>
-                <option value="">All sources</option>
-                {SOURCES.map((s) => <option key={s} value={s}>{SOURCE_LABELS[s]}</option>)}
-              </select>
-            </label>
+              <Select
+                ariaLabel="Source"
+                value={params.get("source") ?? ""}
+                onChange={(v) => set({ source: v || null })}
+                options={[{ value: "", label: "All sources" }, ...SOURCES.map((s) => ({ value: s, label: SOURCE_LABELS[s] }))]}
+              />
+            </div>
             {canAssign && (
-              <label className="block">
+              <div>
                 <span className="label">Owner</span>
-                <select className="input" value={params.get("owner") ?? ""} onChange={(e) => set({ owner: e.target.value || null })}>
-                  <option value="">Everyone</option>
-                  <option value="none">Unassigned</option>
-                  {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </label>
+                <Select
+                  ariaLabel="Owner"
+                  value={params.get("owner") ?? ""}
+                  onChange={(v) => set({ owner: v || null })}
+                  options={[{ value: "", label: "Everyone" }, { value: "none", label: "Unassigned" }, ...people.map((p) => ({ value: p.id, label: p.name }))]}
+                />
+              </div>
             )}
             {activeFilters.length > 0 && (
               <button type="button" className="btn w-full text-ink-2 hover:bg-hover" onClick={() => set(Object.fromEntries(activeFilters.map((k) => [k, null])))}>
@@ -206,10 +245,10 @@ export function DealsToolbar({ people, canAssign, isOwner, views = ["list", "kan
               <label><span className="label">Phone or LINE ID</span><input name="phone" className="input" /></label>
               <label><span className="label">One-off value (฿)</span><input name="value" inputMode="decimal" className="input" /></label>
               <label><span className="label">Monthly care plan (฿)</span><input name="monthlyValue" inputMode="decimal" className="input" /></label>
-              <label><span className="label">Segment</span><select name="segment" className="input" defaultValue=""><option value="">—</option>{SEGMENTS.map((s) => <option key={s}>{s}</option>)}</select></label>
-              <label><span className="label">Priority</span><select name="priority" className="input" defaultValue="B">{PRIORITIES.map((p) => <option key={p}>{p}</option>)}</select></label>
+              <div><span className="label">Industry</span><Select name="segment" ariaLabel="Industry" defaultValue="" options={[{ value: "", label: "—" }, ...SEGMENTS.map((s) => ({ value: s, label: s }))]} /></div>
+              <div><span className="label">Priority</span><Select name="priority" ariaLabel="Priority" defaultValue="B" options={PRIORITIES.map((p) => ({ value: p, label: p }))} /></div>
               {canAssign && (
-                <label className="sm:col-span-2"><span className="label">Owner</span><select name="ownerId" className="input" defaultValue="self"><option value="self">Me</option><option value="">Unassigned</option>{people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+                <div className="sm:col-span-2"><span className="label">Owner</span><Select name="ownerId" ariaLabel="Owner" defaultValue="self" options={[{ value: "self", label: "Me" }, { value: "", label: "Unassigned" }, ...people.map((p) => ({ value: p.id, label: p.name }))]} /></div>
               )}
             </div>
             <footer className="flex justify-end gap-2 border-t border-line px-5 py-4">

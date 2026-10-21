@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/Select";
 import { useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -116,14 +117,7 @@ export function TeamRow({ team }: { team: Team }) {
 
 function TeamSelect({ teams, defaultValue }: { teams: Team[]; defaultValue?: string | null }) {
   return (
-    <select name="teamId" defaultValue={defaultValue ?? ""} className="input" aria-label="Team">
-      <option value="">No team</option>
-      {teams.map((t) => (
-        <option key={t.id} value={t.id}>
-          {t.name}
-        </option>
-      ))}
-    </select>
+    <Select name="teamId" ariaLabel="Team" defaultValue={defaultValue ?? ""} options={[{ value: "", label: "No team" }, ...teams.map((t) => ({ value: t.id, label: t.name }))]} />
   );
 }
 
@@ -142,13 +136,7 @@ export function AddPersonForm({ teams }: { teams: Team[] }) {
       </div>
       <div>
         <label htmlFor="new-person-role" className="label">Role</label>
-        <select id="new-person-role" name="role" defaultValue="REP" className="input">
-          {ROLE_OPTIONS.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-            </option>
-          ))}
-        </select>
+        <Select id="new-person-role" name="role" defaultValue="REP" options={ROLE_OPTIONS.map((r) => ({ value: r.value, label: r.label }))} />
       </div>
       <div>
         <label className="label">Team</label>
@@ -185,13 +173,7 @@ export function PersonRow({ person, teams, isMe }: { person: Person; teams: Team
         </div>
         <form ref={updateRef} action={update} className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="userId" value={person.id} />
-          <select name="role" defaultValue={person.role} className="input w-auto" aria-label="Role">
-            {ROLE_OPTIONS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label.split(" (")[0]}
-              </option>
-            ))}
-          </select>
+          <Select name="role" ariaLabel="Role" defaultValue={person.role} className="w-auto min-w-32" menuWidth={180} options={ROLE_OPTIONS.map((r) => ({ value: r.value, label: r.label.split(" (")[0] }))} />
           <div className="w-40">
             <TeamSelect teams={teams} defaultValue={person.teamId} />
           </div>

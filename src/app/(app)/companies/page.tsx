@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { requireUser } from "@/lib/server/session";
 import { db } from "@/lib/server/db";
-import { leadWhere, type LeadFilterParams } from "@/lib/server/leadFilters";
+import { leadFacets, leadWhereWithCountry, type LeadFilterParams } from "@/lib/server/leadFilters";
 import { canAssignTo, leadScope } from "@/lib/access";
 import { computeCAC } from "@/lib/acquisition";
 import { STAGE_LABELS, STAGE_PILL, WON_STAGES, type Stage } from "@/lib/domain";
@@ -42,7 +42,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
   const sort = params.sort && SORTABLE[params.sort] ? params.sort : "priority";
   const dir: Prisma.SortOrder = params.dir === "desc" ? "desc" : "asc";
   const per = [25, 50, 100].includes(Number(params.per)) ? Number(params.per) : 25;
-  const where = leadWhere(user, params);
+  const [where, facets] = await Promise.all([leadWhereWithCountry(user, params), leadFacets(user)]);
   const total = await db.lead.count({ where });
   const pages = Math.max(1, Math.ceil(total / per));
   const page = Math.min(pages, Math.max(1, Number(params.page) || 1));
@@ -103,7 +103,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
         history={spends.map((s) => ({ source: s.source, month: s.month, amount: s.amount }))}
         isOwner={user.role === "OWNER"}
       />
-      <DealsToolbar people={everyone.filter((p) => canAssignTo(user, p)).map((p) => ({ id: p.id, name: p.name }))} canAssign={canAssign} isOwner={user.role === "OWNER"} views={["list", "gallery"]} placeholder="Search companies…" groupable={false} />
+      <DealsToolbar people={everyone.filter((p) => canAssignTo(user, p)).map((p) => ({ id: p.id, name: p.name }))} canAssign={canAssign} isOwner={user.role === "OWNER"} views={["list", "gallery"]} placeholder="Search companies…" groupable={false} facets={facets} />
       <CompaniesTable rows={rows} view={view} canAssign={canAssign} people={everyone.filter((p) => canAssignTo(user, p)).map((p) => ({ id: p.id, name: p.name }))} sortHref={sortHref} sort={sort} dir={dir} />
       <nav className="flex flex-wrap items-center justify-between gap-3 text-sm" aria-label="Pagination">
         <span className="text-ink-2">

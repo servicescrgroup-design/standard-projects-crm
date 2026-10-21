@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/Select";
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -59,10 +60,7 @@ export function CompaniesTable({ rows, view, canAssign, people, sortHref, sort, 
       {[...selected].map((id) => <input key={id} type="hidden" name="leadIds" value={id} />)}
       <span className="font-medium">{selected.size} selected</span>
       <span className="text-ink-2">→ assign to</span>
-      <select name="ownerId" className="input w-auto py-1.5" defaultValue="" aria-label="Assign to">
-        <option value="">Unassigned</option>
-        {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-      </select>
+      <Select name="ownerId" ariaLabel="Assign to" defaultValue="" className="w-auto min-w-40 py-1.5" options={[{ value: "", label: "Unassigned" }, ...people.map((p) => ({ value: p.id, label: p.name }))]} />
       <Assign />
       <button type="button" className="btn text-ink-2 hover:bg-hover" onClick={() => setSelected(new Set())}>Clear</button>
     </form>

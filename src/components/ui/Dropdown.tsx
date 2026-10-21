@@ -23,7 +23,11 @@ export function Dropdown({
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    const onDown = (e: MouseEvent) => {
+      // Menus of <Select>s inside this dropdown render in a portal; clicking them isn't "outside".
+      if ((e.target as Element | null)?.closest?.("[data-floating-menu]")) return;
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {

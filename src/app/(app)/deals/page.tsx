@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { requireUser } from "@/lib/server/session";
 import { db } from "@/lib/server/db";
-import { leadWhere, type LeadFilterParams } from "@/lib/server/leadFilters";
+import { leadFacets, leadWhereWithCountry, type LeadFilterParams } from "@/lib/server/leadFilters";
 import { canAssignTo } from "@/lib/access";
 import { CLOSED_STAGES, DAY_MS, STAGES, STAGE_LABELS, STAGE_PILL, formatMoney, isStage, type Stage } from "@/lib/domain";
 import { DealBoard, type DealCardData } from "@/components/deals/DealBoard";
@@ -28,9 +28,10 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
   const sort = params.sort && ORDER[params.sort] ? params.sort : "board";
   const now = new Date();
 
+  const [where, facets] = await Promise.all([leadWhereWithCountry(user, params), leadFacets(user)]);
   const [leads, everyone] = await Promise.all([
     db.lead.findMany({
-      where: leadWhere(user, params),
+      where,
       select: {
         id: true, company: true, stage: true, priority: true, segment: true, serviceInterest: true, needs: true, whyFit: true,
         value: true, monthlyValue: true, nextFollowUpAt: true, createdAt: true, stageChangedAt: true, boardPosition: true,
@@ -62,7 +63,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-5">
-      <DealsToolbar people={people} canAssign={canAssign} isOwner={user.role === "OWNER"} views={["kanban", "list", "timeline"]} />
+      <DealsToolbar people={people} canAssign={canAssign} isOwner={user.role === "OWNER"} views={["kanban", "list", "timeline"]} facets={facets} />
       <p className="text-xs text-ink-3">
         {leads.length.toLocaleString("en-GB")} deal{leads.length === 1 ? "" : "s"}
         {view === "kanban" && " · drag a card to change its stage"}

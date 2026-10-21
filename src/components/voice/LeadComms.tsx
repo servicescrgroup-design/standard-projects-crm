@@ -7,6 +7,7 @@ import { quickLog } from "@/app/actions";
 import { OUTCOMES, OUTCOME_LABELS, type Outcome } from "@/lib/domain";
 import { formatDuration } from "@/lib/phone";
 import { toast } from "@/components/ui/Toaster";
+import { Select } from "@/components/ui/Select";
 
 type Lead = { id: string; company: string; contactName: string | null; phone: string | null; e164: string | null };
 type Mode = "call" | "meeting";
@@ -351,9 +352,7 @@ export function LeadComms({ lead, hasTwilio, autoOpen }: { lead: Lead; hasTwilio
               )}
               <label className="block">
                 <span className="text-xs text-white/60">Next follow-up</span>
-                <select value={followUp} onChange={(e) => setFollowUp(e.target.value)} className="mt-1 w-full rounded-xl border border-white/10 bg-[#1c1c1c] px-3 py-2 text-sm">
-                  {FOLLOW_UPS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
+                <Select variant="dark" ariaLabel="Next follow-up" value={followUp} onChange={setFollowUp} className="mt-1" options={FOLLOW_UPS.map(([v, l]) => ({ value: v, label: l }))} />
               </label>
               <button type="button" onClick={save} disabled={saving || (phase === "choose" && !notes.trim())} className="w-full rounded-full bg-white py-3 font-medium text-black hover:bg-white/90 disabled:opacity-40">
                 {saving ? "Saving…" : mode === "call" ? "Save call to lead" : "Save meeting to lead"}

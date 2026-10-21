@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/Select";
 import { useActionState, useEffect, useState } from "react";
 import { ChevronDown, History, SlidersHorizontal, TrendingDown, X } from "lucide-react";
 import { saveSpend } from "@/app/actions";
@@ -105,7 +106,7 @@ export function AcquisitionWidget({ average, channels, months, hasSpend, newCust
       {modal === "spend" && isOwner && (
         <Modal title="Adjust spend" onClose={() => setModal(null)}>
           <form action={action} className="grid gap-3 p-5 sm:grid-cols-3">
-            <label><span className="label">Source</span><select name="source" className="input" defaultValue="FACEBOOK">{SOURCES.filter((s) => s !== "MANUAL").map((s) => <option key={s} value={s}>{SOURCE_LABELS[s]}</option>)}</select></label>
+            <div><span className="label">Source</span><Select name="source" ariaLabel="Source" defaultValue="FACEBOOK" options={SOURCES.filter((s) => s !== "MANUAL").map((s) => ({ value: s, label: SOURCE_LABELS[s] }))} /></div>
             <label><span className="label">Month</span><input name="month" type="month" required defaultValue={months[months.length - 1]} className="input" /></label>
             <label><span className="label">Spend (฿)</span><input name="amount" inputMode="decimal" placeholder="0 removes it" className="input" /></label>
             <p className="text-xs text-ink-3 sm:col-span-3">One total per source per month; saving again replaces it.</p>

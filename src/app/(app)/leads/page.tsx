@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Select } from "@/components/ui/Select";
 import type { Prisma } from "@prisma/client";
 import { requireUser } from "@/lib/server/session";
 import { db } from "@/lib/server/db";
@@ -119,31 +120,16 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           </div>
           <div>
             <label className="label" htmlFor="nl-segment">Segment</label>
-            <select id="nl-segment" name="segment" className="input" defaultValue="">
-              <option value="">—</option>
-              {SEGMENTS.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
+            <Select id="nl-segment" name="segment" defaultValue="" options={[{ value: "", label: "—" }, ...SEGMENTS.map((s) => ({ value: s, label: s }))]} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label" htmlFor="nl-priority">Priority</label>
-              <select id="nl-priority" name="priority" className="input" defaultValue="B">
-                {PRIORITIES.map((p) => (
-                  <option key={p}>{p}</option>
-                ))}
-              </select>
+              <Select id="nl-priority" name="priority" defaultValue="B" options={PRIORITIES.map((p) => ({ value: p, label: p }))} />
             </div>
             <div>
               <label className="label" htmlFor="nl-source">Source</label>
-              <select id="nl-source" name="source" className="input" defaultValue="MANUAL">
-                {SOURCES.map((s) => (
-                  <option key={s} value={s}>
-                    {SOURCE_LABELS[s]}
-                  </option>
-                ))}
-              </select>
+              <Select id="nl-source" name="source" defaultValue="MANUAL" options={SOURCES.map((s) => ({ value: s, label: SOURCE_LABELS[s] }))} />
             </div>
           </div>
           <div>
@@ -165,14 +151,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           {isManager && (
             <div>
               <label className="label" htmlFor="nl-owner">Assign to</label>
-              <select id="nl-owner" name="ownerId" className="input" defaultValue={user.id}>
-                <option value="">Unassigned</option>
-                {assignable.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              <Select id="nl-owner" name="ownerId" defaultValue={user.id} options={[{ value: "", label: "Unassigned" }, ...assignable.map((p) => ({ value: p.id, label: p.name }))]} />
             </div>
           )}
           <div className="sm:col-span-2">
@@ -184,46 +163,12 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
 
       <form className="card flex flex-wrap gap-2 p-3">
         <input name="q" defaultValue={q} placeholder="Search name, phone, email or area" className="input min-w-48 flex-1" aria-label="Search" />
-        <select name="priority" defaultValue={priority} className="input w-auto" aria-label="Priority">
-          <option value="">Any priority</option>
-          {PRIORITIES.map((p) => (
-            <option key={p} value={p}>
-              Priority {p}
-            </option>
-          ))}
-        </select>
-        <select name="segment" defaultValue={segment} className="input w-auto" aria-label="Segment">
-          <option value="">All segments</option>
-          {SEGMENTS.map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
-        <select name="stage" defaultValue={stage} className="input w-auto" aria-label="Stage">
-          <option value="">All stages</option>
-          {STAGES.map((s) => (
-            <option key={s} value={s}>
-              {STAGE_LABELS[s]}
-            </option>
-          ))}
-        </select>
-        <select name="source" defaultValue={source} className="input w-auto" aria-label="Source">
-          <option value="">All sources</option>
-          {SOURCES.map((s) => (
-            <option key={s} value={s}>
-              {SOURCE_LABELS[s]}
-            </option>
-          ))}
-        </select>
+        <Select name="priority" ariaLabel="Priority" autoSubmit defaultValue={priority ?? ""} className="w-auto min-w-36" options={[{ value: "", label: "Any priority" }, ...PRIORITIES.map((p) => ({ value: p, label: `Priority ${p}` }))]} />
+        <Select name="segment" ariaLabel="Industry" autoSubmit defaultValue={segment ?? ""} className="w-auto min-w-40" options={[{ value: "", label: "All industries" }, ...SEGMENTS.map((s) => ({ value: s, label: s }))]} />
+        <Select name="stage" ariaLabel="Stage" autoSubmit defaultValue={stage ?? ""} className="w-auto min-w-36" options={[{ value: "", label: "All stages" }, ...STAGES.map((s) => ({ value: s, label: STAGE_LABELS[s] }))]} />
+        <Select name="source" ariaLabel="Source" autoSubmit defaultValue={source ?? ""} className="w-auto min-w-36" options={[{ value: "", label: "All sources" }, ...SOURCES.map((s) => ({ value: s, label: SOURCE_LABELS[s] }))]} />
         {isManager && (
-          <select name="owner" defaultValue={owner} className="input w-auto" aria-label="Owner">
-            <option value="">Everyone</option>
-            <option value="none">Unassigned</option>
-            {people.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          <Select name="owner" ariaLabel="Owner" autoSubmit defaultValue={owner ?? ""} className="w-auto min-w-36" options={[{ value: "", label: "Everyone" }, { value: "none", label: "Unassigned" }, ...people.map((p) => ({ value: p.id, label: p.name }))]} />
         )}
         <button className="btn-ghost">Filter</button>
         {(q || stage || owner || priority || segment || source) && (

@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/Select";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -76,14 +77,7 @@ export function LeadTable({
           {selected.size > 0 && (
             <>
               <span className="text-sm text-ink-3">→ assign to</span>
-              <select name="ownerId" className="input w-auto py-1.5" defaultValue="" aria-label="Assign to">
-                <option value="">Unassigned</option>
-                {people.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              <Select name="ownerId" ariaLabel="Assign to" defaultValue="" className="w-auto min-w-40 py-1.5" options={[{ value: "", label: "Unassigned" }, ...people.map((p) => ({ value: p.id, label: p.name }))]} />
               <AssignButton />
             </>
           )}

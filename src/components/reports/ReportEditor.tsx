@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, BarChart3, Building2, Database, Download, FileSpreadsheet, Plus, Trash2, X } from "lucide-react";
 import { deleteReport, saveReport } from "@/app/actions";
 import { toast } from "@/components/ui/Toaster";
+import { Select } from "@/components/ui/Select";
 import { toCsv } from "@/lib/csv";
 import {
   CHARTS, CHART_NAMES, DATA_SOURCES, DEFAULT_CONFIG, DIMENSIONS, MEASURES, OPS, OP_NAMES, SOURCE_NAMES, TOTAL,
@@ -177,35 +178,41 @@ export function ReportEditor({ reports, initial }: { reports: SavedReport[]; ini
           <input value={title} onChange={(e) => setTitle(e.target.value)} className="input" />
         </Field>
         <Field label="Data Source" icon={Database}>
-          <select className="input" value={config.source} onChange={(e) => {
-            const source = e.target.value as DataSource;
-            const d = Object.keys(DIMENSIONS[source]);
-            setConfig({ ...config, source, op: "count", measure: null, groupBy: d[0], segmentBy: null, segmentValues: null });
-          }}>
-            {DATA_SOURCES.map((s) => <option key={s} value={s}>{SOURCE_NAMES[s]}</option>)}
-          </select>
+          <Select
+            ariaLabel="Data source"
+            value={config.source}
+            onChange={(v) => {
+              const source = v as DataSource;
+              const d = Object.keys(DIMENSIONS[source]);
+              setConfig({ ...config, source, op: "count", measure: null, groupBy: d[0], segmentBy: null, segmentValues: null });
+            }}
+            options={DATA_SOURCES.map((s) => ({ value: s, label: SOURCE_NAMES[s] }))}
+          />
         </Field>
         <Field label="Metric" icon={BarChart3}>
           <div className="flex gap-2">
-            <select className="input" value={config.op} onChange={(e) => {
-              const op = e.target.value as Op;
-              set({ op, measure: op === "count" ? null : config.measure ?? Object.keys(measures)[0] ?? null });
-            }}>
-              {OPS.filter((o) => o === "count" || Object.keys(measures).length > 0).map((o) => <option key={o} value={o}>{OP_NAMES[o]}</option>)}
-            </select>
+            <Select
+              ariaLabel="Metric"
+              value={config.op}
+              onChange={(v) => {
+                const op = v as Op;
+                set({ op, measure: op === "count" ? null : config.measure ?? Object.keys(measures)[0] ?? null });
+              }}
+              options={OPS.filter((o) => o === "count" || Object.keys(measures).length > 0).map((o) => ({ value: o, label: OP_NAMES[o] }))}
+            />
             {config.op !== "count" && (
-              <select className="input" value={config.measure ?? ""} onChange={(e) => set({ measure: e.target.value })}>
-                {Object.entries(measures).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
+              <Select ariaLabel="Measure" value={config.measure ?? ""} onChange={(v) => set({ measure: v })} options={Object.entries(measures).map(([k, v]) => ({ value: k, label: v }))} />
             )}
           </div>
         </Field>
         <Field label="Grouped By" icon={Building2}>
           <div className="flex gap-2">
-            <select className="input" value={config.groupBy ?? ""} onChange={(e) => set({ groupBy: e.target.value || null, segmentBy: config.segmentBy === e.target.value ? null : config.segmentBy })}>
-              <option value="">No grouping</option>
-              {Object.entries(dims).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            <Select
+              ariaLabel="Grouped by"
+              value={config.groupBy ?? ""}
+              onChange={(v) => set({ groupBy: v || null, segmentBy: config.segmentBy === v ? null : config.segmentBy })}
+              options={[{ value: "", label: "No grouping" }, ...Object.entries(dims).map(([k, v]) => ({ value: k, label: v }))]}
+            />
             {config.groupBy && <button type="button" onClick={() => set({ groupBy: null })} className="btn-ghost px-2" aria-label="Remove grouping"><X className="h-4 w-4" /></button>}
           </div>
           {config.groupBy && (
@@ -216,10 +223,12 @@ export function ReportEditor({ reports, initial }: { reports: SavedReport[]; ini
         </Field>
         <Field label="Segmented By">
           <div className="flex gap-2">
-            <select className="input" value={config.segmentBy ?? ""} onChange={(e) => set({ segmentBy: e.target.value || null, segmentValues: null })}>
-              <option value="">No segmentation</option>
-              {Object.entries(dims).filter(([k]) => k !== config.groupBy).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            <Select
+              ariaLabel="Segmented by"
+              value={config.segmentBy ?? ""}
+              onChange={(v) => set({ segmentBy: v || null, segmentValues: null })}
+              options={[{ value: "", label: "No segmentation" }, ...Object.entries(dims).filter(([k]) => k !== config.groupBy).map(([k, v]) => ({ value: k, label: v }))]}
+            />
             {config.segmentBy && <button type="button" onClick={() => set({ segmentBy: null, segmentValues: null })} className="btn-ghost px-2" aria-label="Remove segmentation"><X className="h-4 w-4" /></button>}
           </div>
           {config.segmentBy && result.allSegments.length > 0 && (
@@ -244,9 +253,7 @@ export function ReportEditor({ reports, initial }: { reports: SavedReport[]; ini
           )}
         </Field>
         <Field label="Visualization">
-          <select className="input" value={config.chart} onChange={(e) => set({ chart: e.target.value as ReportConfig["chart"] })}>
-            {CHARTS.map((c) => <option key={c} value={c}>{CHART_NAMES[c]}</option>)}
-          </select>
+          <Select ariaLabel="Visualization" value={config.chart} onChange={(v) => set({ chart: v as ReportConfig["chart"] })} options={CHARTS.map((c) => ({ value: c, label: CHART_NAMES[c] }))} />
         </Field>
         <label className="flex items-center gap-2 text-sm text-ink-2">
           <input type="checkbox" className="h-4 w-4 accent-brand-600" checked={shared} onChange={(e) => setShared(e.target.checked)} /> Share with the team (each person still only sees their own data)
@@ -265,10 +272,14 @@ export function ReportEditor({ reports, initial }: { reports: SavedReport[]; ini
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <select className="input w-auto" value={currentId ?? ""} onChange={(e) => open(e.target.value || null)} aria-label="Saved reports">
-          <option value="">{reports.length ? "Unsaved report" : "No saved reports yet"}</option>
-          {reports.map((r) => <option key={r.id} value={r.id}>{r.mine ? r.title : `${r.title} · shared by ${r.owner}`}</option>)}
-        </select>
+        <Select
+          ariaLabel="Saved reports"
+          className="w-auto min-w-52"
+          menuWidth={280}
+          value={currentId ?? ""}
+          onChange={(v) => open(v || null)}
+          options={[{ value: "", label: reports.length ? "Unsaved report" : "No saved reports yet" }, ...reports.map((r) => ({ value: r.id, label: r.mine ? r.title : `${r.title} · shared by ${r.owner}` }))]}
+        />
         <button type="button" onClick={() => open(null)} className="btn-ghost"><Plus className="h-4 w-4" /> New report</button>
         {dirty && <span className="text-xs font-medium text-amber-700">Unsaved changes</span>}
         <button type="button" onClick={() => setPanelOpen(true)} className="btn-dark ml-auto lg:hidden">Configure</button>

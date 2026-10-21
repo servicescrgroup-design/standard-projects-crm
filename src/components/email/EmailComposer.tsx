@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { Send } from "lucide-react";
 import { approveAndSend, deleteDraft, saveEmailDraft, type EmailResult } from "@/app/emailActions";
 import { toast } from "@/components/ui/Toaster";
+import { Select } from "@/components/ui/Select";
 
 export type ThreadOption = { activityId: string; subject: string };
 
@@ -36,10 +37,7 @@ export function EmailComposer({ leadId, defaultTo, canSend, threads, hasMailbox 
       {threads.length > 0 && (
         <label className="block">
           <span className="label">Reply in thread</span>
-          <select name="replyToActivityId" className="input" value={replyTo} onChange={(e) => pickThread(e.target.value)}>
-            <option value="">New email</option>
-            {threads.map((t) => <option key={t.activityId} value={t.activityId}>{t.subject || "(no subject)"}</option>)}
-          </select>
+          <Select name="replyToActivityId" ariaLabel="Reply in thread" value={replyTo} onChange={pickThread} options={[{ value: "", label: "New email" }, ...threads.map((t) => ({ value: t.activityId, label: t.subject || "(no subject)" }))]} />
         </label>
       )}
       <label className="block">

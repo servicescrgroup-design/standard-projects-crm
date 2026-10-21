@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Select } from "@/components/ui/Select";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/server/session";
 import { db } from "@/lib/server/db";
@@ -262,42 +263,29 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
             <input type="hidden" name="leadId" value={lead.id} />
             <div>
               <label className="label">Stage</label>
-              <select name="stage" defaultValue={lead.stage} className="input">
-                {STAGES.map((s) => (
-                  <option key={s} value={s}>
-                    {STAGE_LABELS[s]}
-                  </option>
-                ))}
-              </select>
+              <Select name="stage" ariaLabel="Stage" defaultValue={lead.stage} options={STAGES.map((s) => ({ value: s, label: STAGE_LABELS[s] }))} />
               <p className="mt-1 text-xs text-ink-3">Moves forward automatically as you log. Change it here to override.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label" htmlFor="ld-priority">Priority</label>
-                <select id="ld-priority" name="priority" defaultValue={lead.priority ?? ""} className="input">
-                  <option value="">—</option>
-                  {PRIORITIES.map((p) => (
-                    <option key={p}>{p}</option>
-                  ))}
-                </select>
+                <Select id="ld-priority" name="priority" defaultValue={lead.priority ?? ""} options={[{ value: "", label: "—" }, ...PRIORITIES.map((p) => ({ value: p, label: p }))]} />
               </div>
               <div>
-                <label className="label" htmlFor="ld-segment">Segment</label>
-                <select id="ld-segment" name="segment" defaultValue={lead.segment ?? ""} className="input">
-                  <option value="">—</option>
-                  {SEGMENTS.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
+                <label className="label" htmlFor="ld-segment">Industry</label>
+                <Select
+                  id="ld-segment"
+                  name="segment"
+                  defaultValue={lead.segment ?? ""}
+                  options={[
+                    { value: "", label: "—" },
+                    ...[...SEGMENTS, ...(lead.segment && !(SEGMENTS as readonly string[]).includes(lead.segment) ? [lead.segment] : [])].map((s) => ({ value: s, label: s })),
+                  ]}
+                />
               </div>
               <div>
                 <label className="label" htmlFor="ld-package">Package</label>
-                <select id="ld-package" name="package" defaultValue={lead.package ?? ""} className="input">
-                  <option value="">—</option>
-                  {PACKAGES.map((p) => (
-                    <option key={p}>{p}</option>
-                  ))}
-                </select>
+                <Select id="ld-package" name="package" defaultValue={lead.package ?? ""} options={[{ value: "", label: "—" }, ...PACKAGES.map((p) => ({ value: p, label: p }))]} />
               </div>
               <div>
                 <label className="label" htmlFor="ld-budget">Their budget (฿)</label>
@@ -307,17 +295,16 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
             {canAssign ? (
               <div>
                 <label className="label">Owner</label>
-                <select name="ownerId" defaultValue={lead.ownerId ?? ""} className="input">
-                  <option value="">Unassigned</option>
-                  {assignable.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                  {lead.owner && !assignable.some((p) => p.id === lead.ownerId) && (
-                    <option value={lead.owner.id}>{lead.owner.name}</option>
-                  )}
-                </select>
+                <Select
+                  name="ownerId"
+                  ariaLabel="Owner"
+                  defaultValue={lead.ownerId ?? ""}
+                  options={[
+                    { value: "", label: "Unassigned" },
+                    ...assignable.map((p) => ({ value: p.id, label: p.name })),
+                    ...(lead.owner && !assignable.some((p) => p.id === lead.ownerId) ? [{ value: lead.owner.id, label: lead.owner.name }] : []),
+                  ]}
+                />
               </div>
             ) : (
               <div className="text-sm">

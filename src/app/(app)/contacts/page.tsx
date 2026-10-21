@@ -4,13 +4,14 @@ import { ArrowDown, ArrowUp, Search, SlidersHorizontal, Upload, X } from "lucide
 import { requireUser } from "@/lib/server/session";
 import { db } from "@/lib/server/db";
 import { leadScope } from "@/lib/access";
-import { leadWhere } from "@/lib/server/leadFilters";
+import { leadWhere, leadWhereWithCountry } from "@/lib/server/leadFilters";
 import { DAY_MS, STAGES, STAGE_LABELS, isStage, type Stage } from "@/lib/domain";
 import { websiteDomain } from "@/lib/matching";
 import { pctChange } from "@/lib/analytics";
-import { THAI_PLACES, countryAliases, countryOfLead } from "@/lib/countries";
+import { countryOfLead } from "@/lib/countries";
 import { Avatar, ContactsTable, type ContactRow } from "@/components/contacts/ContactsTable";
 import { AddContactButton } from "@/components/contacts/AddContactButton";
+import { MultiSelect, Select } from "@/components/ui/Select";
 
 export const dynamic = "force-dynamic";
 
@@ -61,16 +62,10 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
     filters.push({ OR: [...(named.length ? [{ segment: { in: named } }] : []), ...(cats.includes(NO_CATEGORY) ? [{ segment: null }] : [])] });
   }
   if (countries.length) {
-    // A country matches when the location ends with any of its spellings; Thailand also matches local place names.
-    filters.push({
-      OR: countries.flatMap((c) => [
-        ...countryAliases(c).map((a) => ({ location: { endsWith: a, mode: "insensitive" as const } })),
-        // Leads added by Grok Bot keep the country in the industry text ("plumbers | USA Seattle").
-        ...countryAliases(c).filter((a) => a.length > 2).map((a) => ({ industry: { contains: `| ${a}`, mode: "insensitive" as const } })),
-        ...(c === "Thailand" ? THAI_PLACES.map((pl) => ({ location: { contains: pl.trim(), mode: "insensitive" as const } })) : []),
-      ]),
-    });
+    const byCountry = await leadWhereWithCountry(user, { country: countries.join(",") });
+    filters.push(byCountry);
   }
+
   if (RANGES[range].days) filters.push({ createdAt: { gte: new Date(now - RANGES[range].days! * DAY_MS) } });
   if (emailOnly) filters.push({ email: { not: null } });
   const where: Prisma.LeadWhereInput = { AND: filters };
@@ -102,9 +97,12 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
     .map((s) => ({ name: s.segment ?? NO_CATEGORY, count: s._count._all }))
     .sort((a, b) => b.count - a.count);
   const countryCounts = new Map<string, number>();
+  const countryFlags = new Map<string, string>();
   for (const l of locations) {
-    const c = countryOfLead(l)?.name;
+    const found = countryOfLead(l);
+    const c = found?.name;
     if (c) countryCounts.set(c, (countryCounts.get(c) ?? 0) + 1);
+    if (found) countryFlags.set(found.name, found.flag);
   }
   const countryOptions = [...countryCounts.keys()].sort((a, b) => a.localeCompare(b));
   const activeOwners = [...new Set(contactedThisWeek.map((l) => l.owner?.name).filter((n): n is string => !!n))];
@@ -223,33 +221,24 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
             {p.q && <input type="hidden" name="q" value={p.q} />}
             {cats.map((c) => <input key={c} type="hidden" name="cat" value={c} />)}
             {sort !== "company" && <input type="hidden" name="sort" value={sort} />}
-            <label className="block">
+            <div>
               <span className="label">Added</span>
-              <select name="range" defaultValue={range} className="input">
-                {Object.entries(RANGES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
-              </select>
-            </label>
-            <label className="block">
+              <Select name="range" ariaLabel="Added" defaultValue={range} options={Object.entries(RANGES).map(([k, r]) => ({ value: k, label: r.label }))} />
+            </div>
+            <div>
               <span className="label">Stage</span>
-              <select name="stage" defaultValue={stage ?? ""} className="input">
-                <option value="">Any stage</option>
-                {STAGES.map((s) => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
-              </select>
-            </label>
-            <fieldset>
-              <legend className="label">Countries</legend>
-              <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-line p-2">
-                {countryOptions.map((c) => (
-                  <label key={c} className="flex items-center justify-between gap-2 rounded px-1.5 py-1 text-sm hover:bg-hover">
-                    <span className="flex items-center gap-2">
-                      <input type="checkbox" name="country" value={c} defaultChecked={countries.includes(c)} className="accent-indigo-600" /> {c}
-                    </span>
-                    <span className="text-xs text-ink-3">{countryCounts.get(c)}</span>
-                  </label>
-                ))}
-                {countryOptions.length === 0 && <p className="px-1.5 py-1 text-sm text-ink-3">No locations yet</p>}
-              </div>
-            </fieldset>
+              <Select name="stage" ariaLabel="Stage" defaultValue={stage ?? ""} options={[{ value: "", label: "Any stage" }, ...STAGES.map((s) => ({ value: s, label: STAGE_LABELS[s] }))]} />
+            </div>
+            <div>
+              <span className="label">Countries</span>
+              <MultiSelect
+                name="country"
+                ariaLabel="Countries"
+                placeholder="All countries"
+                defaultValues={countries}
+                options={[...countryOptions].sort((a, b) => (countryCounts.get(b) ?? 0) - (countryCounts.get(a) ?? 0)).map((c) => ({ value: c, label: `${countryFlags.get(c) ?? ""} ${c}`.trim(), hint: String(countryCounts.get(c) ?? 0) }))}
+              />
+            </div>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="email" value="1" defaultChecked={emailOnly} className="accent-indigo-600" /> Only contacts with an email
             </label>

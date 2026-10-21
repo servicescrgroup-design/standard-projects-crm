@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/server/session";
 import { db } from "@/lib/server/db";
-import { leadWhere } from "@/lib/server/leadFilters";
+import { leadWhereWithCountry } from "@/lib/server/leadFilters";
 import { toCsv } from "@/lib/csv";
 import { STAGE_LABELS, type Stage } from "@/lib/domain";
 
@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   if (!user) return new Response("Please sign in", { status: 401 });
   const p = Object.fromEntries(new URL(req.url).searchParams);
   const leads = await db.lead.findMany({
-    where: leadWhere(user, p),
+    where: await leadWhereWithCountry(user, p),
     include: { owner: { select: { name: true } } },
     orderBy: [{ priority: { sort: "asc", nulls: "last" } }, { company: "asc" }],
   });

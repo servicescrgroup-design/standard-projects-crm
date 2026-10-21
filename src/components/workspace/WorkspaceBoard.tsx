@@ -10,6 +10,7 @@ import { moveLeadOnBoard, quickLog } from "@/app/actions";
 import { formatMoney } from "@/lib/domain";
 import { INTEREST_LABELS, nowPosition, scheduleLayout, type Interest, type TaskKind } from "@/lib/workspace";
 import { toast } from "@/components/ui/Toaster";
+import { Select } from "@/components/ui/Select";
 
 export type WorkspaceData = {
   agent: { id: string; name: string; isSelf: boolean };
@@ -210,13 +211,14 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
             {data.people.length > 1 && (
               <label className="ml-auto flex items-center gap-2 text-sm text-ink-2">
                 Viewing
-                <select
+                <Select
+                  variant="pill"
+                  ariaLabel="Viewing workspace of"
                   value={data.agent.id}
-                  onChange={(e) => router.push(`/workspace${qs(e.target.value)}`)}
-                  className="rounded-full border border-black/10 bg-white px-3 py-2 text-sm text-ink"
-                >
-                  {data.people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                  onChange={(v) => router.push(`/workspace${qs(v)}`)}
+                  className="min-w-40"
+                  options={data.people.map((p) => ({ value: p.id, label: p.name }))}
+                />
               </label>
             )}
           </div>
@@ -321,15 +323,16 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
                     <div className="mt-1 flex items-center gap-2">
                       <label className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-black/5 bg-white py-1 pl-1 pr-3">
                         <Face name={data.agent.name} size={32} />
-                        <select
-                          aria-label={`Stage for ${t.contact}`}
+                        <Select
+                          variant="ghost"
+                          ariaLabel={`Stage for ${t.contact}`}
                           defaultValue={t.stage}
                           disabled={pending}
-                          onChange={(e) => changeStage(t.id, e.target.value)}
-                          className="min-w-0 flex-1 bg-transparent text-sm outline-none"
-                        >
-                          {data.stages.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-                        </select>
+                          onChange={(v) => changeStage(t.id, v)}
+                          className="min-w-0 flex-1 px-1 py-1 hover:bg-transparent"
+                          menuWidth={200}
+                          options={data.stages.map((s) => ({ value: s.id, label: s.label }))}
+                        />
                       </label>
                       {t.email && <RoundIcon href={`/leads/${t.id}#email`} label={`Email ${t.contact}`}><Mail className="h-4 w-4" /></RoundIcon>}
                       {t.phone && <RoundIcon href={`/leads/${t.id}?call=1`} label={`Call ${t.contact}`} dark><Phone className="h-4 w-4" /></RoundIcon>}
@@ -433,10 +436,7 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
             <input type="hidden" name="redirectTo" value={`/workspace${qs(data.agent.id)}`} />
             <label className="mt-4 block">
               <span className="label">Lead</span>
-              <select name="leadId" required className="input" defaultValue="">
-                <option value="" disabled>Choose a lead…</option>
-                {data.leadOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-              </select>
+              <Select name="leadId" required ariaLabel="Lead" defaultValue="" placeholder="Choose a lead…" searchable options={data.leadOptions.map((o) => ({ value: o.id, label: o.label }))} />
             </label>
             <label className="mt-3 block">
               <span className="label">What needs doing</span>
