@@ -7,6 +7,7 @@ import { CheckCircle2, ChevronDown, Download, Menu, RefreshCw, Sparkles, Upload 
 import { Dropdown, menuItemClass } from "@/components/ui/Dropdown";
 
 const TITLES: [string, string][] = [
+  ["/workspace", "Workspace"],
   ["/dashboard", "Dashboard"],
   ["/deals", "Deals"],
   ["/notes", "Notes"],

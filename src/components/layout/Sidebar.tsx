@@ -11,6 +11,7 @@ import {
   Clock,
   FolderKanban,
   Handshake,
+  Briefcase,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
@@ -36,6 +37,7 @@ export type SidebarProject = { id: string; company: string };
 type NavItem = { href: string; label: string; icon: LucideIcon; badge?: number };
 
 const MAIN: NavItem[] = [
+  { href: "/workspace", label: "Workspace", icon: Briefcase },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/deals", label: "Deals", icon: Handshake },
   { href: "/notes", label: "Notes", icon: StickyNote },

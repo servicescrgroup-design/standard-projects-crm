@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { requireUser } from "@/lib/server/session";
 import { db } from "@/lib/server/db";
@@ -143,6 +144,10 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-5">
       {showEmailPrompt && <EmailPrompt {...providers} />}
+      <nav aria-label="Dashboard views" className="inline-flex rounded-full border border-line bg-white p-1 text-sm">
+        <Link href="/workspace" className="rounded-full px-4 py-1.5 text-ink-2 hover:text-ink">My workspace</Link>
+        <span aria-current="page" className="rounded-full bg-ink px-4 py-1.5 font-medium text-white">Business overview</span>
+      </nav>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-2">
           {hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"}, {user.name.split(" ")[0]}. Here&apos;s how sales are going.

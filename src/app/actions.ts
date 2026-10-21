@@ -67,6 +67,9 @@ function revalidateAll(leadId?: string) {
   if (leadId) revalidatePath(`/leads/${leadId}`);
 }
 
+/** Sales reps start on their Workspace; owners and team leads on the Dashboard. */
+const homeFor = (role: string) => (role === "REP" ? "/workspace" : "/dashboard");
+
 export type SignInResult = { error?: string };
 
 const GENERIC_SIGN_IN_ERROR = "Wrong email or password";
@@ -90,7 +93,7 @@ export async function signIn(_prev: SignInResult, fd: FormData): Promise<SignInR
   }
   await db.loginAttempt.deleteMany({ where: { email } });
   await startSession({ id: user.id, passwordHash: user.passwordHash });
-  redirect("/dashboard");
+  redirect(homeFor(user.role));
 }
 
 export async function signOut() {
@@ -120,7 +123,7 @@ export async function acceptInvite(_prev: InviteResult, fd: FormData): Promise<I
     db.invite.deleteMany({ where: { userId: invite.userId, usedAt: null, id: { not: invite.id } } }),
   ]);
   await startSession({ id: user.id, passwordHash });
-  redirect("/dashboard");
+  redirect(homeFor(user.role));
 }
 
 async function inviteLink(userId: string): Promise<string> {

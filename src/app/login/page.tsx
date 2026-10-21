@@ -6,7 +6,8 @@ import { SignInForm } from "@/components/AuthForms";
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
-  if (await getCurrentUser()) redirect("/dashboard");
+  const signedIn = await getCurrentUser();
+  if (signedIn) redirect(signedIn.role === "REP" ? "/workspace" : "/dashboard");
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <div className="card w-full max-w-sm p-6">
