@@ -21,3 +21,21 @@ describe("countries", () => {
     expect(flagOf("JP")).toBe("🇯🇵");
   });
 });
+
+describe("countryOfLead", () => {
+  it("falls back to country words in the industry text", async () => {
+    const { countryOfLead } = await import("../countries");
+    expect(countryOfLead({ industry: "plumbers | USA Seattle" })?.code).toBe("US");
+    expect(countryOfLead({ industry: "electricians | UK Cardiff" })?.code).toBe("GB");
+    expect(countryOfLead({ industry: "physiotherapists | Australia Melbourne" })?.code).toBe("AU");
+    expect(countryOfLead({ industry: "help us grow" })).toBeNull();
+  });
+  it("then uses the phone number", async () => {
+    const { countryOfLead } = await import("../countries");
+    expect(countryOfLead({ phone: "0865645089" })?.code).toBe("TH");
+    expect(countryOfLead({ phone: "+61399399364" })?.code).toBe("AU");
+    expect(countryOfLead({ phone: "07847 111570" })).toBeNull();
+    expect(countryOfLead({ location: "Austin, TX, United States", phone: "0865645089" })?.code).toBe("US");
+    expect(countryOfLead({ company: "Chiangmai OTOP Center" })?.code).toBe("TH");
+  });
+});

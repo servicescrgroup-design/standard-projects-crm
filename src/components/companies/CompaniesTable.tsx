@@ -11,6 +11,7 @@ export type CompanyRow = {
   id: string;
   company: string;
   area: string | null;
+  country: { name: string; flag: string } | null;
   link: { href: string; label: string } | null;
   stageLabel: string;
   stagePill: string;
@@ -79,7 +80,7 @@ export function CompaniesTable({ rows, view, canAssign, people, sortHref, sort, 
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-sm font-bold text-brand-700">{initials(r.company)}</span>
                 <span className="min-w-0">
                   <span className="block truncate font-semibold hover:text-brand-700">{r.company}</span>
-                  <span className="block truncate text-xs text-ink-3">{r.area ?? "No area"}</span>
+                  <span className="block truncate text-xs text-ink-3">{r.country && <span aria-hidden>{r.country.flag} </span>}{[r.area, r.country?.name].filter((x, i, a) => x && !(i === 1 && a[0]?.toLowerCase().includes(x.toLowerCase()))).join(", ") || "No area"}</span>
                 </span>
               </Link>
               <div className="mt-3 flex flex-wrap gap-1.5">
@@ -101,7 +102,7 @@ export function CompaniesTable({ rows, view, canAssign, people, sortHref, sort, 
     <div className="card overflow-hidden">
       {bulk}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-sm">
+        <table className="w-full min-w-[1040px] text-sm">
           <thead className="border-b border-line">
             <tr>
               {canAssign && (
@@ -110,6 +111,7 @@ export function CompaniesTable({ rows, view, canAssign, people, sortHref, sort, 
                 </th>
               )}
               <Th id="company">Company</Th>
+              <Th>Country</Th>
               <Th>LinkedIn / Online</Th>
               <Th id="stage">Stage</Th>
               <Th id="contact">Contacts</Th>
@@ -130,6 +132,11 @@ export function CompaniesTable({ rows, view, canAssign, people, sortHref, sort, 
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-[11px] font-bold text-brand-700">{initials(r.company)}</span>
                     <span className="min-w-0"><span className="block max-w-[240px] truncate font-medium hover:text-brand-700">{r.company}</span>{r.area && <span className="block max-w-[240px] truncate text-xs text-ink-3">{r.area}</span>}</span>
                   </Link>
+                </td>
+                <td className="border-r border-line-soft px-3 py-2">
+                  {r.country ? (
+                    <span className="flex items-center gap-2 whitespace-nowrap"><span className="text-base leading-none" aria-hidden>{r.country.flag}</span>{r.country.name}</span>
+                  ) : <span className="text-ink-3">—</span>}
                 </td>
                 <td className="border-r border-line-soft px-3 py-2">
                   {r.link ? (

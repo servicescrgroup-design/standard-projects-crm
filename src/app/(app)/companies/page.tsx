@@ -9,6 +9,7 @@ import { STAGE_LABELS, STAGE_PILL, WON_STAGES, type Stage } from "@/lib/domain";
 import { DealsToolbar } from "@/components/deals/DealsToolbar";
 import { AcquisitionWidget } from "@/components/companies/AcquisitionWidget";
 import { CompaniesTable, type CompanyRow } from "@/components/companies/CompaniesTable";
+import { countryOfLead } from "@/lib/countries";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,10 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
     id: l.id,
     company: l.company,
     area: l.location,
+    country: (() => {
+      const c = countryOfLead(l);
+      return c ? { name: c.name, flag: c.flag } : null;
+    })(),
     link: bestLink(l.website, l.socialLinks),
     stageLabel: STAGE_LABELS[l.stage as Stage] ?? l.stage,
     stagePill: STAGE_PILL[l.stage as Stage] ?? "",

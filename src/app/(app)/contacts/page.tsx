@@ -8,7 +8,7 @@ import { leadWhere } from "@/lib/server/leadFilters";
 import { DAY_MS, STAGES, STAGE_LABELS, isStage, type Stage } from "@/lib/domain";
 import { websiteDomain } from "@/lib/matching";
 import { pctChange } from "@/lib/analytics";
-import { THAI_PLACES, countryAliases, countryOf } from "@/lib/countries";
+import { THAI_PLACES, countryAliases, countryOfLead } from "@/lib/countries";
 import { Avatar, ContactsTable, type ContactRow } from "@/components/contacts/ContactsTable";
 import { AddContactButton } from "@/components/contacts/AddContactButton";
 
@@ -65,6 +65,8 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
     filters.push({
       OR: countries.flatMap((c) => [
         ...countryAliases(c).map((a) => ({ location: { endsWith: a, mode: "insensitive" as const } })),
+        // Leads added by Grok Bot keep the country in the industry text ("plumbers | USA Seattle").
+        ...countryAliases(c).filter((a) => a.length > 2).map((a) => ({ industry: { contains: `| ${a}`, mode: "insensitive" as const } })),
         ...(c === "Thailand" ? THAI_PLACES.map((pl) => ({ location: { contains: pl.trim(), mode: "insensitive" as const } })) : []),
       ]),
     });
@@ -80,7 +82,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
     db.lead.count({ where: { AND: [scope, { email: { not: null } }] } }),
     db.lead.findMany({ where: { AND: [scope, { lastContactAt: { gte: new Date(now - 7 * DAY_MS) } }] }, select: { owner: { select: { name: true } } }, take: 500 }),
     db.lead.groupBy({ by: ["segment"], where: scope, _count: { _all: true } }),
-    db.lead.findMany({ where: { AND: [scope, { location: { not: null } }] }, select: { location: true }, distinct: ["location"], take: 5000 }),
+    db.lead.findMany({ where: scope, select: { location: true, industry: true, phone: true, company: true }, take: 8000 }),
     db.lead.count({ where }),
   ]);
   const pages = Math.max(1, Math.ceil(matching / PAGE_SIZE));
@@ -101,7 +103,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
     .sort((a, b) => b.count - a.count);
   const countryCounts = new Map<string, number>();
   for (const l of locations) {
-    const c = countryOf(l.location)?.name;
+    const c = countryOfLead(l)?.name;
     if (c) countryCounts.set(c, (countryCounts.get(c) ?? 0) + 1);
   }
   const countryOptions = [...countryCounts.keys()].sort((a, b) => a.localeCompare(b));
@@ -118,7 +120,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
     phone: l.phone,
     location: l.location,
     country: (() => {
-      const c = countryOf(l.location);
+      const c = countryOfLead(l);
       return c ? { name: c.name, flag: c.flag } : null;
     })(),
     about: l.industry ?? l.segment,

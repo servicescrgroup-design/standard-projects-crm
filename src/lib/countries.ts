@@ -21,7 +21,7 @@ const NAMES: Record<string, string> = {
 
 // Local leads often only name a Thai city or area.
 export const THAI_PLACES = [
-  "chiang mai", "chiang rai", "bangkok", "phuket", "pattaya", "krabi", "hua hin", "koh ", "samui", "nimman", "hang dong",
+  "chiang mai", "chiangmai", "chiang rai", "chiangrai", "bangkok", "phuket", "pattaya", "krabi", "hua hin", "koh ", "samui", "nimman", "hang dong",
   "san sai", "mae rim", "saraphi", "doi ", "lamphun", "lampang", "nonthaburi", "khon kaen", "udon", "ayutthaya",
 ];
 const THAI_SCRIPT = /[฀-๿]/;
@@ -50,4 +50,47 @@ export function countryAliases(name: string): string[] {
   const code = Object.entries(NAMES).find(([, n]) => n === name)?.[0];
   if (!code) return [name];
   return Object.entries(CODES).filter(([, c]) => c === code).map(([alias]) => alias);
+}
+
+// Free-text scan (e.g. Grok Bot's "plumbers | USA Seattle"). Skips "us", which is an ordinary word.
+const TEXT_ALIASES = Object.keys(CODES)
+  .filter((a) => a !== "us")
+  .sort((a, b) => b.length - a.length);
+
+function countryInText(text: string | null | undefined): Country | null {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+  for (const alias of TEXT_ALIASES) {
+    const at = lower.search(new RegExp(`(^|[^a-z])${alias.replace(/[.]/g, "\\.")}([^a-z]|$)`));
+    if (at >= 0) {
+      const code = CODES[alias];
+      return { code, name: NAMES[code], flag: flagOf(code) };
+    }
+  }
+  return null;
+}
+
+/** International prefixes we can trust, plus Thai local mobiles (10 digits starting 06/08/09). */
+const PHONE_PREFIX: [string, string][] = [
+  ["+66", "TH"], ["+44", "GB"], ["+61", "AU"], ["+49", "DE"], ["+64", "NZ"], ["+353", "IE"], ["+41", "CH"], ["+43", "AT"],
+  ["+31", "NL"], ["+45", "DK"], ["+46", "SE"], ["+47", "NO"], ["+81", "JP"], ["+33", "FR"], ["+39", "IT"], ["+34", "ES"], ["+65", "SG"],
+];
+function countryFromPhone(phone: string | null | undefined): Country | null {
+  if (!phone) return null;
+  const compact = phone.split(/[\/,;]/)[0].replace(/[^\d+]/g, "");
+  const hit = PHONE_PREFIX.find(([p]) => compact.startsWith(p));
+  const code = hit?.[1] ?? (/^0[689]\d{8}$/.test(compact) ? "TH" : null);
+  return code ? { code, name: NAMES[code], flag: flagOf(code) } : null;
+}
+
+/** Best guess for a lead's country: its location, then country words in its industry/notes, then its phone number. */
+export function countryOfLead(lead: { location?: string | null; industry?: string | null; phone?: string | null; company?: string | null }): Country | null {
+  const thaiName = lead.company && (THAI_SCRIPT.test(lead.company) || THAI_PLACES.some((p) => lead.company!.toLowerCase().includes(p)));
+  return (
+    countryOf(lead.location) ??
+    countryInText(lead.location) ??
+    countryInText(lead.industry) ??
+    countryFromPhone(lead.phone) ??
+    (thaiName ? { code: "TH", name: NAMES.TH, flag: flagOf("TH") } : null)
+  );
 }
