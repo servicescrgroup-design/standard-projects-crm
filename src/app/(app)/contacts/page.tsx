@@ -147,7 +147,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
       </div>
 
       {/* Category tabs: industries, multi-select */}
-      <nav aria-label="Categories" className="-mb-px flex gap-1 overflow-x-auto border-b border-line">
+      <nav aria-label="Categories" data-tour="contact-tabs" className="-mb-px flex gap-1 overflow-x-auto border-b border-line">
         <Link href={href({ cat: [] })} className={`shrink-0 border-b-2 px-3 pb-3 pt-1 text-sm font-medium ${cats.length === 0 ? "border-indigo-600 text-indigo-700" : "border-transparent text-ink-2 hover:text-ink"}`}>
           All <span className="ml-1 text-xs text-ink-3">{total.toLocaleString("en-GB")}</span>
         </Link>

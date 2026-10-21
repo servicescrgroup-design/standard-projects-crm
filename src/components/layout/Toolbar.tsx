@@ -54,9 +54,9 @@ export function Toolbar({ isOwner, renderedAt, onMenu, onAskAI }: { isOwner: boo
       </button>
       <h1 className="mr-auto truncate text-base font-semibold">{title}</h1>
 
-      <NotificationBell />
+      <div data-tour="bell"><NotificationBell /></div>
 
-      <button type="button" onClick={onAskAI} className="btn-primary">
+      <button type="button" onClick={onAskAI} className="btn-primary" data-tour="ask-ai">
         <Sparkles className="h-4 w-4" /> <span className="hidden sm:inline">Ask AI</span>
       </button>
 

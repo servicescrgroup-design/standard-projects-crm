@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReplayTourButton } from "@/components/layout/ReplayTourButton";
 
 const TOPICS = [
   { t: "Start your day on Today", d: "Your follow-ups, most important first: replies waiting on you, then priority A, deal size and how overdue.", href: "/today" },
@@ -12,6 +13,13 @@ const TOPICS = [
 export default function HelpPage() {
   return (
     <div className="space-y-4">
+      <div className="card flex flex-wrap items-center gap-4 p-5">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold">New here? Take the guided tour</h2>
+          <p className="text-sm text-ink-2">A pointer walks you through your Workspace, tasks, alerts, contacts, deals, email sequences, quotes and connecting your email. About 2 minutes.</p>
+        </div>
+        <ReplayTourButton />
+      </div>
       <p className="text-sm text-ink-2">Quick guides to the CRM. Forgot your password? Ask the owner for a reset link (Settings → Reset link).</p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {TOPICS.map((x) => (

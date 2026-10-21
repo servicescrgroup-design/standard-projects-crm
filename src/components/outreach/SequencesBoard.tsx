@@ -102,7 +102,7 @@ export function SequencesBoard({ sequences, templates, canEdit, canRunNow }: { s
         </section>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2" data-tour="sequences">
         {sequences.map((s) => (
           <article key={s.id} className="card flex flex-col p-4">
             <div className="flex items-start justify-between gap-2">

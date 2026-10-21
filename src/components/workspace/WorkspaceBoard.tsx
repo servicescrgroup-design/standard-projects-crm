@@ -145,7 +145,7 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
   return (
     <div className="-m-4 min-h-full bg-[#ececec] p-4 md:-m-6 md:p-6">
       {/* Schedule bar */}
-      <section className="flex flex-col gap-2 rounded-[28px] bg-[#0f0f0f] p-2 text-white lg:flex-row lg:items-center">
+      <section data-tour="schedule" className="flex flex-col gap-2 rounded-[28px] bg-[#0f0f0f] p-2 text-white lg:flex-row lg:items-center">
         <div className="flex items-center gap-3 px-4 py-1">
           <span className="text-lg font-medium">Your Schedule</span>
           <span className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-sm text-white/80">
@@ -193,7 +193,7 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
           <div className="flex flex-wrap items-center gap-x-10 gap-y-5">
             <div className="flex flex-wrap items-center gap-3 sm:gap-5">
               <h1 className="text-3xl font-semibold uppercase tracking-tight text-[#111] sm:text-5xl">Workspace</h1>
-              <button type="button" onClick={() => setNewTask(true)} className="inline-flex items-center gap-2 rounded-full bg-[#111] py-2 pl-2 pr-5 text-sm text-white hover:bg-black">
+              <button type="button" data-tour="new-task" onClick={() => setNewTask(true)} className="inline-flex items-center gap-2 rounded-full bg-[#111] py-2 pl-2 pr-5 text-sm text-white hover:bg-black">
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20"><Plus className="h-4 w-4" /></span> New Task
               </button>
             </div>
@@ -227,7 +227,7 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
           {data.inbound.length > 0 && <RespondNow items={data.inbound} />}
 
           {/* New leads */}
-          <section>
+          <section data-tour="new-leads">
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-2xl text-[#111]">New Leads</h2>
               <span className="mr-2 text-sm underline underline-offset-4"><b className="text-lg">{data.leads.length}</b> {data.newLeadsFromPool ? "unassigned" : "leads"}</span>
@@ -275,7 +275,7 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
           </section>
 
           {/* Today's tasks */}
-          <section>
+          <section data-tour="tasks">
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-2xl text-[#111]">Your Day&rsquo;s Tasks</h2>
               <span className="mr-2 text-sm underline underline-offset-4"><b className="text-lg">{data.tasks.length}</b> tasks</span>
@@ -349,7 +349,7 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
         </div>
 
         {/* Summary panel */}
-        <aside className="h-fit space-y-3 rounded-[32px] bg-[#0f0f0f] p-3 text-white xl:sticky xl:top-24">
+        <aside data-tour="summary" className="h-fit space-y-3 rounded-[32px] bg-[#0f0f0f] p-3 text-white xl:sticky xl:top-24">
           <div className="flex items-center justify-between px-3 pt-2">
             <h2 className="text-2xl">Summary</h2>
             <Link href="/today" aria-label="Open Today" className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 hover:bg-white/10"><ArrowUpRight className="h-4 w-4" /></Link>

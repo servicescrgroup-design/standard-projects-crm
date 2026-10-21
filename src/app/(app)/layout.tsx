@@ -25,6 +25,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       dueCount={buildQueue(mine).length}
       projects={projects}
       renderedAt={new Date().toISOString()}
+      // The walkthrough starts by itself on a rep's or team lead's first sign-in; owners replay it from Help.
+      showTour={user.role !== "OWNER" && (user.preferences as Record<string, unknown> | null)?.tourDone !== true}
     >
       {children}
     </AppShell>

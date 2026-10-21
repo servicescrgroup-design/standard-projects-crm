@@ -83,6 +83,7 @@ function NavLink({ item, collapsed, active, indent = false, onNavigate }: { item
   return (
     <Link
       href={item.href}
+      data-tour={`nav${item.href.replace(/\//g, "-")}`}
       onClick={onNavigate}
       title={collapsed ? item.label : undefined}
       aria-current={active ? "page" : undefined}

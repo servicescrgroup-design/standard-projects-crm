@@ -68,7 +68,7 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
         {leads.length.toLocaleString("en-GB")} deal{leads.length === 1 ? "" : "s"}
         {view === "kanban" && " · drag a card to change its stage"}
       </p>
-      {view === "kanban" && <DealBoard stages={stages} deals={cards} />}
+      {view === "kanban" && <div data-tour="deal-board"><DealBoard stages={stages} deals={cards} /></div>}
       {view === "list" && <DealList leads={leads} group={params.group ?? "stage"} canAssign={canAssign} />}
       {view === "timeline" && <DealTimeline leads={leads} now={now} />}
     </div>

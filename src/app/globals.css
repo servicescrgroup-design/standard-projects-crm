@@ -137,3 +137,9 @@ body {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* Guided tour: the "click" pulse under the pointer. */
+@keyframes tour-click {
+  0% { transform: scale(0.3); opacity: 0.9; }
+  100% { transform: scale(2.2); opacity: 0; }
+}

@@ -5,15 +5,18 @@ import { Sidebar, type SidebarProject, type SidebarUser } from "./Sidebar";
 import { Toolbar } from "./Toolbar";
 import { AskAIPanel } from "./AskAIPanel";
 import { Toaster } from "@/components/ui/Toaster";
+import { ProductTour } from "./ProductTour";
 
 export function AppShell({
   user,
   dueCount,
   projects,
   renderedAt,
+  showTour = false,
   children,
 }: {
   user: SidebarUser;
+  showTour?: boolean;
   dueCount: number;
   projects: SidebarProject[];
   renderedAt: string;
@@ -32,6 +35,7 @@ export function AppShell({
       </div>
       <AskAIPanel open={aiOpen} onClose={() => setAiOpen(false)} />
       <Toaster />
+      <ProductTour autoStart={showTour} name={user.name} role={user.role} />
     </div>
   );
 }
