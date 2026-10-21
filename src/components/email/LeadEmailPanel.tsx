@@ -26,7 +26,7 @@ export function LeadEmailPanel({
   const options: ThreadOption[] = list.map((m) => ({ activityId: m[0].id, subject: m.find((x) => x.subject)?.subject ?? "" }));
 
   return (
-    <section className="card">
+    <section id="email" className="card scroll-mt-24">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-4 py-3">
         <h2 className="flex items-center gap-2 font-semibold"><Mail className="h-4 w-4 text-brand-600" /> Email</h2>
         <div className="flex gap-4 text-xs text-ink-2">
