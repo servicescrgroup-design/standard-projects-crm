@@ -57,5 +57,12 @@ export async function submitQuote(_prev: QuoteResult, fd: FormData): Promise<Quo
     });
   });
 
+  // Hand the new enquiry to an agent right away (if assignment is switched on) and alert them.
+  try {
+    const { assignInboundLeads } = await import("@/lib/server/assignment");
+    await assignInboundLeads(5);
+  } catch {
+    /* the lead is saved either way; the 10-minute job will retry */
+  }
   return { ok: true };
 }

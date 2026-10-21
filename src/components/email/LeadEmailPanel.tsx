@@ -1,5 +1,6 @@
 import { ExternalLink, Mail } from "lucide-react";
-import { DraftButtons, EmailComposer, type ThreadOption } from "./EmailComposer";
+import { DraftButtons, EmailComposer, type TemplateOption, type ThreadOption } from "./EmailComposer";
+import type { MergeContext } from "@/lib/templates";
 
 type EmailActivity = { id: string; type: string; subject: string | null; summary: string | null; threadId: string | null; webLink: string | null; source: string; occurredAt: Date };
 type Draft = { id: string; to: string; subject: string; body: string; status: string; error: string | null; author: { name: string }; updatedAt: Date };
@@ -9,10 +10,11 @@ const STATUS: Record<string, string> = { DRAFT: "Draft", AWAITING_APPROVAL: "Dra
 
 /** Every email thread with this lead, last contacted / replied dates, drafts awaiting approval and the composer. */
 export function LeadEmailPanel({
-  leadId, leadEmail, lastContactAt, lastReplyAt, emails, drafts, canSend, hasMailbox,
+  leadId, leadEmail, lastContactAt, lastReplyAt, emails, drafts, canSend, hasMailbox, templates = [], merge = {}, sequenceBox,
 }: {
   leadId: string; leadEmail: string | null; lastContactAt: Date | null; lastReplyAt: Date | null;
   emails: EmailActivity[]; drafts: Draft[]; canSend: boolean; hasMailbox: boolean;
+  templates?: TemplateOption[]; merge?: MergeContext; sequenceBox?: React.ReactNode;
 }) {
   // Group synced/sent emails into threads, newest thread first.
   const threads = new Map<string, EmailActivity[]>();
@@ -85,9 +87,11 @@ export function LeadEmailPanel({
         </div>
       )}
 
+      {sequenceBox && <div className="border-t border-line-soft p-4">{sequenceBox}</div>}
+
       <div className="border-t border-line-soft p-4">
         <h3 className="mb-3 text-sm font-semibold">Send email</h3>
-        <EmailComposer leadId={leadId} defaultTo={leadEmail ?? ""} canSend={canSend} threads={options} hasMailbox={hasMailbox} />
+        <EmailComposer leadId={leadId} defaultTo={leadEmail ?? ""} canSend={canSend} threads={options} hasMailbox={hasMailbox} templates={templates} merge={merge} />
       </div>
     </section>
   );

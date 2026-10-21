@@ -7,6 +7,7 @@ import { canSendEmail, leadScope } from "@/lib/access";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { SearchBox } from "@/components/SearchBox";
 import { DraftButtons } from "@/components/email/EmailComposer";
+import { EnrollmentApprovals } from "@/components/outreach/EnrollmentApprovals";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,15 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
     }),
     db.mailbox.count({ where: { userId: user.id } }),
   ]);
+  const pendingEnrollments = canSend
+    ? await db.sequenceEnrollment.findMany({
+        where: { status: "PENDING_APPROVAL", lead: leadScope(user) },
+        orderBy: { createdAt: "asc" },
+        take: 200,
+        include: { lead: { select: { id: true, company: true, email: true } }, sequence: { select: { name: true } } },
+      })
+    : [];
+  const requesters = await db.user.findMany({ where: { id: { in: [...new Set(pendingEnrollments.map((e) => e.enrolledById))] } }, select: { id: true, name: true } });
 
   return (
     <div className="space-y-4">
@@ -38,6 +48,10 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
           )}
         </p>
       </div>
+
+      <EnrollmentApprovals
+        rows={pendingEnrollments.map((e) => ({ id: e.id, company: e.lead.company, leadId: e.lead.id, email: e.lead.email, sequence: e.sequence.name, by: requesters.find((u) => u.id === e.enrolledById)?.name ?? "—" }))}
+      />
 
       {awaiting.length > 0 && (
         <section className="card">

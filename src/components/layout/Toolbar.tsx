@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { CheckCircle2, ChevronDown, Download, Menu, RefreshCw, Sparkles, Upload } from "lucide-react";
 import { Dropdown, menuItemClass } from "@/components/ui/Dropdown";
+import { NotificationBell } from "./NotificationBell";
 
 const TITLES: [string, string][] = [
   ["/workspace", "Workspace"],
@@ -14,6 +15,8 @@ const TITLES: [string, string][] = [
   ["/emails", "Emails"],
   ["/reports", "Reports"],
   ["/workflows", "Workflows"],
+  ["/outreach", "Outreach"],
+  ["/quotes", "Quote"],
   ["/companies", "Companies"],
   ["/contacts", "Contacts"],
   ["/meetings", "Meetings"],
@@ -50,6 +53,8 @@ export function Toolbar({ isOwner, renderedAt, onMenu, onAskAI }: { isOwner: boo
         <Menu className="h-5 w-5" />
       </button>
       <h1 className="mr-auto truncate text-base font-semibold">{title}</h1>
+
+      <NotificationBell />
 
       <button type="button" onClick={onAskAI} className="btn-primary">
         <Sparkles className="h-4 w-4" /> <span className="hidden sm:inline">Ask AI</span>

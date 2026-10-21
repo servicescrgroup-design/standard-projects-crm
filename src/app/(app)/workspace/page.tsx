@@ -68,6 +68,14 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
       })
     : ownNew;
 
+  // New enquiries handed to this person that nobody has contacted yet: shown with a response timer.
+  const inbound = await db.lead.findMany({
+    where: { ownerId: agent.id, stage: "NEW", assignedAt: { gte: new Date(now.getTime() - 3 * DAY_MS) }, source: { in: ["WEBSITE", "QUOTE"] }, lastContactAt: null },
+    orderBy: { assignedAt: "asc" },
+    take: 10,
+    select: { id: true, company: true, contactName: true, source: true, assignedAt: true, phone: true, email: true },
+  });
+
   const queue = buildQueue(openLeads, now).filter((q) => !q.needsDecision).slice(0, 18);
   const weekStats = computeRepStats([agent.id], weekActs, wonForGoals.filter((l) => l.stageChangedAt >= weekStart)).get(agent.id)!;
   const monthStats = computeRepStats([agent.id], monthActs, wonForGoals).get(agent.id)!;
@@ -93,6 +101,7 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
       lostDelta: lostMonth - lostLastMonth,
     },
     newLeadsFromPool: showPool,
+    inbound: inbound.map((l) => ({ id: l.id, name: l.contactName ?? l.company, company: l.company, source: SOURCE_LABELS[l.source as Source] ?? l.source, assignedAt: l.assignedAt!.toISOString(), phone: l.phone, email: l.email })),
     leads: newLeads.map((l) => {
       const interest = interestOf(l.priority);
       return {

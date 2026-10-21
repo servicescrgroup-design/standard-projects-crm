@@ -21,6 +21,11 @@ import {
 import { QuickLogForm } from "@/components/QuickLogForm";
 import { LeadEmailPanel } from "@/components/email/LeadEmailPanel";
 import { LeadComms } from "@/components/voice/LeadComms";
+import { LeadSequenceBox } from "@/components/outreach/LeadSequenceBox";
+import { LeadQuotes } from "@/components/quotes/LeadQuotes";
+import { leadMergeContext } from "@/lib/templates";
+import { EMAIL_RESTRICTED_COUNTRIES } from "@/lib/sequences";
+import { countryOfLead } from "@/lib/countries";
 import { countryOf } from "@/lib/countries";
 import { toE164 } from "@/lib/phone";
 import { updateLead } from "../../../actions";
@@ -47,12 +52,19 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
   });
   if (!lead || !canSeeLead(user, lead)) notFound();
 
-  const [candidates, drafts, myMailboxes, twilioConnected] = await Promise.all([
+  const [candidates, drafts, myMailboxes, twilioConnected, templates, sequences, enrollments, quotes, myMailbox] = await Promise.all([
     db.user.findMany({ orderBy: { name: "asc" } }),
     db.emailDraft.findMany({ where: { leadId: lead.id, status: { not: "SENT" } }, include: { author: { select: { name: true } } }, orderBy: { updatedAt: "desc" } }),
     db.mailbox.count({ where: { userId: user.id, status: "ACTIVE" } }),
     db.twilioConnection.count({ where: { userId: user.id } }),
+    db.emailTemplate.findMany({ orderBy: [{ language: "asc" }, { name: "asc" }], select: { id: true, name: true, language: true, subject: true, body: true } }),
+    db.sequence.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    db.sequenceEnrollment.findMany({ where: { leadId: lead.id }, orderBy: { updatedAt: "desc" }, include: { sequence: { select: { name: true, _count: { select: { steps: true } } } } } }),
+    db.quote.findMany({ where: { leadId: lead.id }, orderBy: { createdAt: "desc" } }),
+    db.mailbox.findFirst({ where: { userId: user.id, status: "ACTIVE" }, select: { address: true } }),
   ]);
+  const country = countryOfLead(lead)?.name ?? null;
+  const merge = leadMergeContext(lead, { name: user.name, email: myMailbox?.address ?? user.email });
   const assignable = candidates.filter((c) => canAssignTo(user, c));
   const canAssign = user.role !== "REP";
 
@@ -218,7 +230,21 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
             drafts={drafts}
             canSend={canSendEmail(user)}
             hasMailbox={myMailboxes > 0}
+            templates={templates}
+            merge={merge}
+            sequenceBox={
+              <LeadSequenceBox
+                leadId={lead.id}
+                hasEmail={!!lead.email}
+                restrictedCountry={country && EMAIL_RESTRICTED_COUNTRIES.includes(country) ? country : null}
+                sequences={sequences}
+                canSend={canSendEmail(user)}
+                enrollments={enrollments.map((e) => ({ id: e.id, sequenceName: e.sequence.name, status: e.status, step: e.stepIndex, total: e.sequence._count.steps, nextRunAt: e.nextRunAt?.toISOString() ?? null, stopReason: e.stopReason }))}
+              />
+            }
           />
+
+          <LeadQuotes leadId={lead.id} quotes={quotes} />
 
           <section className="card p-4">
             <h2 className="mb-3 font-semibold">Log activity</h2>

@@ -19,6 +19,7 @@ export type WorkspaceData = {
   meetings: { id: string; start: string; company: string; contact: string | null; leadId: string; summary: string | null }[];
   stats: { deals: number; dealsDelta: number; won: number; wonDelta: number; lost: number; lostDelta: number };
   newLeadsFromPool: boolean;
+  inbound: { id: string; name: string; company: string; source: string; assignedAt: string; phone: string | null; email: string | null }[];
   leads: { id: string; name: string; subtitle: string; sources: string[]; interest: Interest; dots: number; email: string | null; phone: string | null }[];
   tasks: {
     id: string; contact: string; company: string; title: string; kind: TaskKind; amount: number; due: string | null;
@@ -222,6 +223,8 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
               </label>
             )}
           </div>
+
+          {data.inbound.length > 0 && <RespondNow items={data.inbound} />}
 
           {/* New leads */}
           <section>
@@ -454,5 +457,46 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** New enquiries waiting for a first reply, with a live timer (red after 15 minutes). */
+function RespondNow({ items }: { items: WorkspaceData["inbound"] }) {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <section className="rounded-[28px] bg-[#111] p-5 text-white">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="relative flex h-3 w-3"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#cdf464] opacity-75" /><span className="relative inline-flex h-3 w-3 rounded-full bg-[#cdf464]" /></span>
+        <h2 className="text-xl">Respond now</h2>
+        <p className="text-sm text-white/60">New enquiries assigned to you. The first business to reply usually wins.</p>
+      </div>
+      <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
+        {items.map((l) => {
+          const mins = now ? Math.max(0, Math.floor((now - new Date(l.assignedAt).getTime()) / 60000)) : 0;
+          const late = mins >= 15;
+          const label = mins < 60 ? `${mins} min` : mins < 1440 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${Math.floor(mins / 1440)} d`;
+          return (
+            <article key={l.id} className="w-64 shrink-0 rounded-2xl bg-white/5 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{l.name}</p>
+                  <p className="truncate text-xs text-white/50">{l.company !== l.name ? `${l.company} · ` : ""}{l.source}</p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${late ? "bg-[#ff5a4e] text-white" : "bg-[#cdf464] text-black"}`} title="Waiting since assigned">{now ? label : "…"}</span>
+              </div>
+              <div className="mt-3 flex gap-2">
+                {l.phone && <Link href={`/leads/${l.id}?call=1`} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#cdf464] py-2 text-sm font-medium text-black"><Phone className="h-3.5 w-3.5" /> Call</Link>}
+                <Link href={`/leads/${l.id}${l.email ? "#email" : ""}`} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-white/15 py-2 text-sm hover:bg-white/10">{l.email ? <><Mail className="h-3.5 w-3.5" /> Email</> : "Open"}</Link>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { createLead } from "@/app/actions";
+import { DuplicateWarning } from "@/components/DuplicateWarning";
 
 /** "Add contact": a quick form that creates a lead and opens it. */
 export function AddContactButton() {
@@ -27,6 +28,7 @@ export function AddContactButton() {
               <button type="button" aria-label="Close" onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-ink-2 hover:bg-hover"><X className="h-4 w-4" /></button>
             </div>
             <div className="grid gap-3 p-5 sm:grid-cols-2">
+              <DuplicateWarning />
               <label className="sm:col-span-2"><span className="label">Company *</span><input name="company" required className="input" autoFocus /></label>
               <label><span className="label">Contact name</span><input name="contactName" className="input" /></label>
               <label><span className="label">Email</span><input name="email" type="email" className="input" /></label>

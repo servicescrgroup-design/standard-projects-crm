@@ -261,7 +261,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
       </div>
 
       <div>
-        <ContactsTable rows={rows} sort={sort} sortHref={href({ sort: sort === "company" ? "recent" : undefined })} />
+        <ContactsTable sequences={await db.sequence.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } })} rows={rows} sort={sort} sortHref={href({ sort: sort === "company" ? "recent" : undefined })} />
         <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-line bg-white px-5 py-3">
           {page > 1 ? (
             <Link href={href({ page: String(page - 1) })} className="rounded-lg border border-line px-4 py-2 text-sm font-medium shadow-sm hover:bg-hover">Previous</Link>

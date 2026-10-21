@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Copy, Download, GripVertical, Mail, Pencil, Phone, RotateCcw } from "lucide-react";
 import { toCsv } from "@/lib/csv";
 import { toast } from "@/components/ui/Toaster";
+import { AddToSequence } from "@/components/outreach/AddToSequence";
 
 export type ContactRow = {
   id: string;
@@ -138,7 +139,7 @@ function Cell({ col, r }: { col: ColId; r: ContactRow }) {
 }
 
 /** Contacts table: pinned company/contact, resizable and re-orderable columns, row selection with bulk export. */
-export function ContactsTable({ rows, sort, sortHref }: { rows: ContactRow[]; sort: "company" | "recent"; sortHref: string }) {
+export function ContactsTable({ rows, sort, sortHref, sequences = [] }: { rows: ContactRow[]; sort: "company" | "recent"; sortHref: string; sequences?: { id: string; name: string }[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [layout, setLayout] = useState<Layout>(DEFAULT_LAYOUT);
   const [dragging, setDragging] = useState<ColId | null>(null);
@@ -313,6 +314,7 @@ export function ContactsTable({ rows, sort, sortHref }: { rows: ContactRow[]; so
             <button type="button" onClick={copyEmails} className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-3 py-1.5 font-medium hover:bg-hover">
               <Copy className="h-4 w-4" /> Copy emails
             </button>
+            <AddToSequence leadIds={chosen.map((r) => r.id)} sequences={sequences} onDone={() => setSelected(new Set())} />
             <button type="button" onClick={() => setSelected(new Set())} className="text-ink-2 hover:text-ink">Clear</button>
           </>
         ) : (

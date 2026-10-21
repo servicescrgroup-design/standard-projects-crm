@@ -7,6 +7,11 @@ import { ImportLeads } from "@/components/ImportLeads";
 import { MailboxSettings } from "@/components/email/MailboxSettings";
 import { isProviderConfigured } from "@/lib/mail/oauth";
 import { TwilioSettings } from "@/components/voice/TwilioSettings";
+import { PriceList } from "@/components/settings/PriceList";
+import { AssignmentSettings } from "@/components/settings/AssignmentSettings";
+import { getAssignment } from "@/lib/server/assignment";
+import { leadFacets } from "@/lib/server/leadFilters";
+import { SOURCES, SOURCE_LABELS } from "@/lib/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +58,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     );
   }
 
+  const [assignment, prices, facets] = await Promise.all([
+    getAssignment(),
+    db.priceItem.findMany({ where: { active: true }, orderBy: [{ position: "asc" }, { name: "asc" }] }),
+    leadFacets(user),
+  ]);
   const [teamRows, people] = await Promise.all([
     db.team.findMany({ include: { _count: { select: { users: true } } }, orderBy: { name: "asc" } }),
     db.user.findMany({
@@ -72,7 +82,25 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       {emailSection}
       {phoneSection}
 
-      <section className="card p-4">
+      <section id="assignment" className="card scroll-mt-24 p-4">
+        <h2 className="font-semibold">Lead assignment</h2>
+        <p className="mb-3 text-sm text-ink-3">Give every new website or quote-form enquiry to someone straight away, so nobody misses it and nobody argues over it.</p>
+        <AssignmentSettings
+          initial={assignment}
+          people={people.map((p) => ({ id: p.id, name: p.name }))}
+          countries={facets.countries.map((c) => c.name)}
+          industries={facets.industries.map((i) => i.name).filter((n) => n !== "none")}
+          sources={SOURCES.map((s) => ({ value: s, label: SOURCE_LABELS[s] }))}
+        />
+      </section>
+
+      <section id="prices" className="card scroll-mt-24 p-4">
+        <h2 className="font-semibold">Price list</h2>
+        <p className="mb-3 text-sm text-ink-3">Your packages, add-ons and monthly plans. Agents pick from these when building a quote and can still adjust prices on each quote.</p>
+        <PriceList items={prices.map((p) => ({ id: p.id, name: p.name, description: p.description, price: p.price, monthly: p.monthly }))} />
+      </section>
+
+      <section id="import" className="card scroll-mt-24 p-4">
         <h2 className="font-semibold">Import leads</h2>
         <p className="mb-3 text-sm text-ink-3">
           Upload a spreadsheet (.csv with a header row: Company, Contact, Email, Phone, Website, Location, Country,

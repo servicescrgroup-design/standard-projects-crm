@@ -104,7 +104,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
         isOwner={user.role === "OWNER"}
       />
       <DealsToolbar people={everyone.filter((p) => canAssignTo(user, p)).map((p) => ({ id: p.id, name: p.name }))} canAssign={canAssign} isOwner={user.role === "OWNER"} views={["list", "gallery"]} placeholder="Search companies…" groupable={false} facets={facets} />
-      <CompaniesTable rows={rows} view={view} canAssign={canAssign} people={everyone.filter((p) => canAssignTo(user, p)).map((p) => ({ id: p.id, name: p.name }))} sortHref={sortHref} sort={sort} dir={dir} />
+      <CompaniesTable rows={rows} view={view} canAssign={canAssign} people={everyone.filter((p) => canAssignTo(user, p)).map((p) => ({ id: p.id, name: p.name }))} sortHref={sortHref} sort={sort} dir={dir} sequences={await db.sequence.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } })} />
       <nav className="flex flex-wrap items-center justify-between gap-3 text-sm" aria-label="Pagination">
         <span className="text-ink-2">
           {total ? `${(page - 1) * per + 1}–${Math.min(page * per, total)} of ${total.toLocaleString("en-GB")}` : "0 companies"}

@@ -19,23 +19,24 @@ model Team {
 }
 
 model User {
-  id           String            @id @default(cuid())
-  name         String
-  email        String            @unique
-  role         String // OWNER | TEAM_LEAD | REP
-  teamId       String?
-  team         Team?             @relation(fields: [teamId], references: [id])
-  leads        Lead[]
-  activities   Activity[]
-  goals        Goal[]
-  invites      Invite[]
-  reports      Report[]
-  mailboxes    Mailbox[]
-  twilio       TwilioConnection?
-  emailDrafts  EmailDraft[]
-  passwordHash String? // null until the person sets a password via their invite link
-  preferences  Json              @default("{}") // per-user UI settings, e.g. dashboard widget order
-  createdAt    DateTime          @default(now())
+  id            String            @id @default(cuid())
+  name          String
+  email         String            @unique
+  role          String // OWNER | TEAM_LEAD | REP
+  teamId        String?
+  team          Team?             @relation(fields: [teamId], references: [id])
+  leads         Lead[]
+  activities    Activity[]
+  goals         Goal[]
+  invites       Invite[]
+  reports       Report[]
+  mailboxes     Mailbox[]
+  twilio        TwilioConnection?
+  notifications Notification[]
+  emailDrafts   EmailDraft[]
+  passwordHash  String? // null until the person sets a password via their invite link
+  preferences   Json              @default("{}") // per-user UI settings, e.g. dashboard widget order
+  createdAt     DateTime          @default(now())
 }
 
 /**
@@ -63,7 +64,7 @@ model LoginAttempt {
 }
 
 model Lead {
-  id                String       @id @default(cuid())
+  id                String               @id @default(cuid())
   company           String
   contactName       String?
   email             String?
@@ -72,9 +73,9 @@ model Lead {
   location          String?
   industry          String?
   serviceInterest   String?
-  source            String       @default("MANUAL") // see SOURCES in src/lib/domain.ts
+  source            String               @default("MANUAL") // see SOURCES in src/lib/domain.ts
   sourceLink        String?
-  externalRef       String?      @unique // e.g. the Notion page URL it was imported from; makes imports re-runnable
+  externalRef       String?              @unique // e.g. the Notion page URL it was imported from; makes imports re-runnable
   priority          String? // A | B | C
   segment           String? // e.g. Consignment, Spa, Website-Marketing, Rental, Gym, Export-Trading, Multi-location
   address           String?
@@ -83,27 +84,30 @@ model Lead {
   googleReviews     Int?
   whyFit            String?
   needs             String?
-  offersToPitch     String[]     @default([])
-  caseStudies       String[]     @default([])
+  offersToPitch     String[]             @default([])
+  caseStudies       String[]             @default([])
   notes             String?
-  budget            Int          @default(0) // customer's stated budget, minor units
+  budget            Int                  @default(0) // customer's stated budget, minor units
   package           String? // Starter | Business | Growth | Custom
   lostReason        String?
   boardPosition     Float? // manual order within a Kanban column (lower = higher up); null = default ordering
-  stage             String       @default("NEW") // see STAGES in src/lib/domain.ts
-  value             Int          @default(0) // one-off value, pence
-  monthlyValue      Int          @default(0) // recurring value, pence
+  stage             String               @default("NEW") // see STAGES in src/lib/domain.ts
+  value             Int                  @default(0) // one-off value, pence
+  monthlyValue      Int                  @default(0) // recurring value, pence
   ownerId           String?
-  owner             User?        @relation(fields: [ownerId], references: [id])
+  owner             User?                @relation(fields: [ownerId], references: [id])
   nextFollowUpAt    DateTime?
   lastContactAt     DateTime?
   lastReplyAt       DateTime?
-  unansweredTouches Int          @default(0)
-  stageChangedAt    DateTime     @default(now())
+  unansweredTouches Int                  @default(0)
+  stageChangedAt    DateTime             @default(now())
   activities        Activity[]
   emailDrafts       EmailDraft[]
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  enrollments       SequenceEnrollment[]
+  quotes            Quote[]
+  assignedAt        DateTime? // when it was last handed to its owner (response-time clock for new enquiries)
 
   @@index([ownerId])
   @@index([stage])
@@ -253,4 +257,141 @@ model TwilioConnection {
   record       Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+/**
+ * Reusable email with merge fields like {{company}} (see src/lib/templates.ts).
+ */
+model EmailTemplate {
+  id          String         @id @default(cuid())
+  name        String
+  category    String? // Intro | Follow-up | Case study | Break-up | …
+  language    String         @default("en") // en | th
+  subject     String
+  body        String
+  createdById String?
+  steps       SequenceStep[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+/**
+ * A series of emails sent automatically, a set number of days apart, until the lead replies.
+ */
+model Sequence {
+  id          String               @id @default(cuid())
+  name        String
+  description String?
+  active      Boolean              @default(true)
+  createdById String?
+  steps       SequenceStep[]
+  enrollments SequenceEnrollment[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+model SequenceStep {
+  id         String        @id @default(cuid())
+  sequenceId String
+  sequence   Sequence      @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  position   Int
+  waitDays   Int // days after the previous email (0 for the first = send straight away)
+  templateId String
+  template   EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+
+  @@index([sequenceId])
+}
+
+/**
+ * A lead going through a sequence. Reps' enrolments wait for a manager's approval.
+ */
+model SequenceEnrollment {
+  id           String    @id @default(cuid())
+  sequenceId   String
+  sequence     Sequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  leadId       String
+  lead         Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  enrolledById String
+  approvedById String?
+  status       String    @default("ACTIVE") // PENDING_APPROVAL | ACTIVE | COMPLETED | REPLIED | STOPPED | FAILED
+  stepIndex    Int       @default(0) // next step to send
+  nextRunAt    DateTime?
+  lastSentAt   DateTime?
+  stopReason   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([sequenceId, leadId])
+  @@index([status, nextRunAt])
+  @@index([leadId])
+}
+
+/**
+ * Owner-managed price list the quote builder picks from (amounts in satang).
+ */
+model PriceItem {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Int      @default(0)
+  monthly     Boolean  @default(false)
+  active      Boolean  @default(true)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/**
+ * A quote sent as a private link (/q/<token>) that the customer can view and accept.
+ */
+model Quote {
+  id            String    @id @default(cuid())
+  number        String    @unique // Q-2026-0001
+  leadId        String
+  lead          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdById   String
+  status        String    @default("DRAFT") // DRAFT | SENT | VIEWED | ACCEPTED | DECLINED
+  title         String    @default("Website & digital services")
+  items         Json // [{ name, description, qty, unitPrice (satang), monthly }]
+  discount      Int       @default(0) // satang, off the one-off total
+  notes         String?
+  validUntil    DateTime?
+  token         String    @unique
+  sentAt        DateTime?
+  viewedAt      DateTime?
+  viewCount     Int       @default(0)
+  acceptedAt    DateTime?
+  acceptedName  String?
+  declinedAt    DateTime?
+  declineReason String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([leadId])
+}
+
+/**
+ * In-app alerts (bell in the toolbar), e.g. "New enquiry assigned to you".
+ */
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String // LEAD_ASSIGNED | QUOTE_VIEWED | QUOTE_ACCEPTED | QUOTE_DECLINED | SEQUENCE_REPLY | APPROVAL_NEEDED
+  title     String
+  body      String?
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+}
+
+/**
+ * Small key/value settings (lead assignment rules and the round-robin pointer).
+ */
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
 }

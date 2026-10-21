@@ -12,6 +12,7 @@ import {
   FolderKanban,
   Handshake,
   Briefcase,
+  Send,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
@@ -42,6 +43,7 @@ const MAIN: NavItem[] = [
   { href: "/deals", label: "Deals", icon: Handshake },
   { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/emails", label: "Emails", icon: Mail },
+  { href: "/outreach", label: "Outreach", icon: Send },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/workflows", label: "Workflows", icon: Workflow },
 ];

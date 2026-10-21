@@ -7,6 +7,7 @@ import { useFormStatus } from "react-dom";
 import { ArrowDown, ArrowUp, ExternalLink } from "lucide-react";
 import { assignLeads } from "@/app/actions";
 import { toast } from "@/components/ui/Toaster";
+import { AddToSequence } from "@/components/outreach/AddToSequence";
 
 export type CompanyRow = {
   id: string;
@@ -31,7 +32,7 @@ function Assign() {
 }
 
 /** Companies list/gallery with selection and bulk assignment. Sorting and paging are links (URL state). */
-export function CompaniesTable({ rows, view, canAssign, people, sortHref, sort, dir }: { rows: CompanyRow[]; view: "list" | "gallery"; canAssign: boolean; people: { id: string; name: string }[]; sortHref: Record<string, string>; sort: string; dir: "asc" | "desc" }) {
+export function CompaniesTable({ rows, view, canAssign, people, sortHref, sort, dir, sequences = [] }: { rows: CompanyRow[]; view: "list" | "gallery"; canAssign: boolean; people: { id: string; name: string }[]; sortHref: Record<string, string>; sort: string; dir: "asc" | "desc"; sequences?: { id: string; name: string }[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [state, action] = useActionState(assignLeads, {});
   useEffect(() => {
@@ -62,6 +63,7 @@ export function CompaniesTable({ rows, view, canAssign, people, sortHref, sort, 
       <span className="text-ink-2">→ assign to</span>
       <Select name="ownerId" ariaLabel="Assign to" defaultValue="" className="w-auto min-w-40 py-1.5" options={[{ value: "", label: "Unassigned" }, ...people.map((p) => ({ value: p.id, label: p.name }))]} />
       <Assign />
+      <AddToSequence leadIds={[...selected]} sequences={sequences} onDone={() => setSelected(new Set())} />
       <button type="button" className="btn text-ink-2 hover:bg-hover" onClick={() => setSelected(new Set())}>Clear</button>
     </form>
   );

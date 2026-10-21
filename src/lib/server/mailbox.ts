@@ -70,6 +70,11 @@ async function logMessage(ctx: MatchContext, mb: Mailbox, m: MailMessage) {
     webLink: m.webLink,
     mailboxId: mb.id,
   });
+  // A reply stops any sequence for this lead straight away and alerts whoever started it.
+  if (logged && m.direction === "in") {
+    const { stopSequencesOnReply } = await import("./sequences");
+    await stopSequencesOnReply(lead.id, m.from);
+  }
   return logged ? ("logged" as const) : ("duplicate" as const);
 }
 

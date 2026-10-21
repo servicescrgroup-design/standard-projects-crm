@@ -20,6 +20,7 @@ import {
 } from "@/lib/domain";
 import { LeadTable } from "@/components/LeadTable";
 import { createLead } from "../../actions";
+import { DuplicateWarning } from "@/components/DuplicateWarning";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +103,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       <details className="card group p-4">
         <summary className="cursor-pointer list-none font-medium text-brand-700">+ Add lead</summary>
         <form action={createLead} className="mt-4 grid gap-3 sm:grid-cols-2">
+          <DuplicateWarning />
           <div>
             <label className="label" htmlFor="nl-company">Company name *</label>
             <input id="nl-company" name="company" required className="input" />

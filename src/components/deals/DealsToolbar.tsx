@@ -8,6 +8,7 @@ import { Dropdown, menuItemClass } from "@/components/ui/Dropdown";
 import { MultiSelect, Select } from "@/components/ui/Select";
 import { createLead } from "@/app/actions";
 import { PRIORITIES, SEGMENTS, SOURCES, SOURCE_LABELS, STAGES, STAGE_LABELS } from "@/lib/domain";
+import { DuplicateWarning } from "@/components/DuplicateWarning";
 
 export type Person = { id: string; name: string };
 export type ToolbarFacets = { countries: { name: string; flag: string; count: number }[]; industries: { name: string; count: number }[] };
@@ -240,6 +241,7 @@ export function DealsToolbar({ people, canAssign, isOwner, views = ["list", "kan
               <button type="button" onClick={() => setNewOpen(false)} className="btn px-2 text-ink-2 hover:bg-hover" aria-label="Close"><X className="h-5 w-5" /></button>
             </header>
             <div className="grid gap-3 p-5 sm:grid-cols-2">
+              <DuplicateWarning />
               <label className="sm:col-span-2"><span className="label">Company name *</span><input name="company" required className="input" autoFocus /></label>
               <label><span className="label">Contact</span><input name="contactName" className="input" /></label>
               <label><span className="label">Phone or LINE ID</span><input name="phone" className="input" /></label>

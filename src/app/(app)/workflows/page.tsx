@@ -14,6 +14,12 @@ const RULES = [
   { when: "Someone submits the Get a quote form", then: "A new unassigned lead (or the existing one with that email) gets every answer and an estimated value" },
   { when: `An open deal has no contact for ${STALLED_AFTER_DAYS}+ days`, then: "It appears under Stalled deals on the Team page" },
   { when: "A deal is dragged to Won, Maintenance or Lost", then: "Its follow-up date is cleared and the close date is recorded" },
+  { when: "A lead is added to an email sequence", then: "Each email goes out from the agent's own mailbox on schedule (reps' requests need a manager's approval first)" },
+  { when: "A lead in a sequence replies", then: "The sequence stops at once and whoever started it gets an alert" },
+  { when: "A quote is sent", then: `A Proposal is logged: stage moves to ${STAGE_LABELS.PROPOSAL_SENT} and the deal value is set from the quote` },
+  { when: "The customer opens the quote link", then: "The owner gets an alert (good moment to call)" },
+  { when: "The customer accepts the quote online", then: `Stage moves to ${STAGE_LABELS.WON}, any sequence stops, and the owner and managers are alerted` },
+  { when: "A new website or quote-form enquiry arrives (assignment on)", then: "It's given to the next person by your rules or in turn, who gets an alert and a response timer" },
 ];
 
 export default function WorkflowsPage() {

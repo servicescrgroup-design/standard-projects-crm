@@ -16,6 +16,7 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { logActivity } from "@/lib/server/activities";
+import { notify } from "@/lib/server/notifications";
 import { sanitizeLayout } from "@/lib/analytics";
 import { sanitizeConfig } from "@/lib/reports";
 import { canAssignTo, canManageGoals, canManagePeople, canSeeLead, wouldLeaveNoOwner } from "@/lib/access";
@@ -187,6 +188,7 @@ export async function createLead(fd: FormData) {
       value: toMinor(str(fd, "value")),
       monthlyValue: toMinor(str(fd, "monthlyValue")),
       ownerId,
+      assignedAt: ownerId ? new Date() : null,
       nextFollowUpAt: parseFollowUp(str(fd, "followUp")),
     },
   });
@@ -228,10 +230,14 @@ export async function updateLead(fd: FormData) {
       if (requested && !assignee) throw new Error("Unknown user");
       if (!canAssignTo(user, assignee)) throw new Error("You can't reassign this lead");
       data.ownerId = assignee?.id ?? null;
+      data.assignedAt = assignee ? new Date() : null;
     }
   }
 
   await db.lead.update({ where: { id: leadId }, data });
+  if (data.ownerId && data.ownerId !== user.id) {
+    await notify(String(data.ownerId), { type: "LEAD_ASSIGNED", title: `${user.name} assigned ${lead.company} to you`, href: `/leads/${leadId}` });
+  }
   revalidateAll(leadId);
 }
 
@@ -396,7 +402,10 @@ export async function assignLeads(_prev: FormResult, fd: FormData): Promise<Form
   // Only leads this person can see are touched, whatever was posted.
   const leads = await db.lead.findMany({ where: { id: { in: ids } }, include: { owner: true } });
   const allowed = leads.filter((l) => canSeeLead(user, l)).map((l) => l.id);
-  const { count } = await db.lead.updateMany({ where: { id: { in: allowed } }, data: { ownerId: assignee?.id ?? null } });
+  const { count } = await db.lead.updateMany({ where: { id: { in: allowed } }, data: { ownerId: assignee?.id ?? null, assignedAt: assignee ? new Date() : null } });
+  if (assignee && assignee.id !== user.id && count > 0) {
+    await notify(assignee.id, { type: "LEAD_ASSIGNED", title: `${user.name} assigned ${count} lead${count === 1 ? "" : "s"} to you`, href: "/leads" });
+  }
   revalidateAll();
   return { ok: true, message: `${count} lead${count === 1 ? "" : "s"} ${assignee ? `assigned to ${assignee.name}` : "moved to unassigned"}` };
 }
