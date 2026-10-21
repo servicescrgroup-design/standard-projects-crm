@@ -45,7 +45,7 @@ describe("buildQueue", () => {
     const bigDeal = lead({ stage: "PROPOSAL_SENT", value: 500000 });
     const q = buildQueue([bigDeal, replied], now);
     expect(q[0].lead.id).toBe(replied.id);
-    expect(q[0].reasons[0]).toMatch(/replied/);
+    expect(q[0].reasons[0]).toMatch(/^Replied/);
   });
 
   it("ranks proposals and bigger deals above small cold follow-ups", () => {

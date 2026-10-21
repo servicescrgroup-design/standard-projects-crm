@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/server/session";
 import { canManagePeople } from "@/lib/access";
-import { importNotionRows, importResearchRows } from "@/lib/server/importLeads";
+import { importCsvRows, importNotionRows, importResearchRows } from "@/lib/server/importLeads";
 import { isResearchFile } from "@/lib/researchImport";
 
+export const maxDuration = 60;
 const MAX_BYTES = 4 * 1024 * 1024;
 const MAX_ROWS = 5000;
 
@@ -23,5 +24,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Every row must be an object" }, { status: 400 });
   }
 
+  if (body?.format === "csv") {
+    if (!rows.every((r: Record<string, unknown>) => Object.values(r).every((v) => typeof v === "string"))) {
+      return NextResponse.json({ error: "Every CSV cell must be text" }, { status: 400 });
+    }
+    return NextResponse.json(await importCsvRows(rows));
+  }
   return NextResponse.json(isResearchFile(rows) ? await importResearchRows(rows) : await importNotionRows(rows));
 }

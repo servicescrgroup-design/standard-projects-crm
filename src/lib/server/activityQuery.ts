@@ -9,10 +9,10 @@ export function scopedActivities(user: Viewer, types: string[], q?: string, take
     where: {
       type: { in: types },
       lead: leadScope(user),
-      ...(search ? { OR: [{ summary: { contains: search, mode: "insensitive" } }, { lead: { company: { contains: search, mode: "insensitive" } } }] } : {}),
+      ...(search ? { OR: [{ summary: { contains: search, mode: "insensitive" } }, { subject: { contains: search, mode: "insensitive" } }, { lead: { company: { contains: search, mode: "insensitive" } } }] } : {}),
     },
     orderBy: { occurredAt: "desc" },
     take,
-    select: { id: true, type: true, outcome: true, summary: true, source: true, occurredAt: true, lead: { select: { id: true, company: true } }, user: { select: { name: true } } },
+    select: { id: true, type: true, outcome: true, summary: true, subject: true, webLink: true, source: true, occurredAt: true, lead: { select: { id: true, company: true } }, user: { select: { name: true } } },
   });
 }

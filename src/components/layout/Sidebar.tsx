@@ -284,7 +284,7 @@ export function Sidebar({
 
         {/* Bottom */}
         <div className="space-y-0.5 border-t border-line-soft px-3 pt-2">
-          {user.role === "OWNER" && <NavLink item={{ href: "/settings", label: "Settings", icon: Settings }} collapsed={isCollapsed} active={isActive("/settings")} onNavigate={close} />}
+          <NavLink item={{ href: "/settings", label: "Settings", icon: Settings }} collapsed={isCollapsed} active={isActive("/settings")} onNavigate={close} />
           <NavLink item={{ href: "/help", label: "Help Center", icon: LifeBuoy }} collapsed={isCollapsed} active={isActive("/help")} onNavigate={close} />
           <button
             type="button"

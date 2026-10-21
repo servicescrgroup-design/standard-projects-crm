@@ -19,20 +19,22 @@ model Team {
 }
 
 model User {
-  id           String     @id @default(cuid())
+  id           String       @id @default(cuid())
   name         String
-  email        String     @unique
+  email        String       @unique
   role         String // OWNER | TEAM_LEAD | REP
   teamId       String?
-  team         Team?      @relation(fields: [teamId], references: [id])
+  team         Team?        @relation(fields: [teamId], references: [id])
   leads        Lead[]
   activities   Activity[]
   goals        Goal[]
   invites      Invite[]
   reports      Report[]
+  mailboxes    Mailbox[]
+  emailDrafts  EmailDraft[]
   passwordHash String? // null until the person sets a password via their invite link
-  preferences  Json       @default("{}") // per-user UI settings, e.g. dashboard widget order
-  createdAt    DateTime   @default(now())
+  preferences  Json         @default("{}") // per-user UI settings, e.g. dashboard widget order
+  createdAt    DateTime     @default(now())
 }
 
 /**
@@ -60,7 +62,7 @@ model LoginAttempt {
 }
 
 model Lead {
-  id                String     @id @default(cuid())
+  id                String       @id @default(cuid())
   company           String
   contactName       String?
   email             String?
@@ -69,9 +71,9 @@ model Lead {
   location          String?
   industry          String?
   serviceInterest   String?
-  source            String     @default("MANUAL") // see SOURCES in src/lib/domain.ts
+  source            String       @default("MANUAL") // see SOURCES in src/lib/domain.ts
   sourceLink        String?
-  externalRef       String?    @unique // e.g. the Notion page URL it was imported from; makes imports re-runnable
+  externalRef       String?      @unique // e.g. the Notion page URL it was imported from; makes imports re-runnable
   priority          String? // A | B | C
   segment           String? // e.g. Consignment, Spa, Website-Marketing, Rental, Gym, Export-Trading, Multi-location
   address           String?
@@ -80,26 +82,27 @@ model Lead {
   googleReviews     Int?
   whyFit            String?
   needs             String?
-  offersToPitch     String[]   @default([])
-  caseStudies       String[]   @default([])
+  offersToPitch     String[]     @default([])
+  caseStudies       String[]     @default([])
   notes             String?
-  budget            Int        @default(0) // customer's stated budget, minor units
+  budget            Int          @default(0) // customer's stated budget, minor units
   package           String? // Starter | Business | Growth | Custom
   lostReason        String?
   boardPosition     Float? // manual order within a Kanban column (lower = higher up); null = default ordering
-  stage             String     @default("NEW") // see STAGES in src/lib/domain.ts
-  value             Int        @default(0) // one-off value, pence
-  monthlyValue      Int        @default(0) // recurring value, pence
+  stage             String       @default("NEW") // see STAGES in src/lib/domain.ts
+  value             Int          @default(0) // one-off value, pence
+  monthlyValue      Int          @default(0) // recurring value, pence
   ownerId           String?
-  owner             User?      @relation(fields: [ownerId], references: [id])
+  owner             User?        @relation(fields: [ownerId], references: [id])
   nextFollowUpAt    DateTime?
   lastContactAt     DateTime?
   lastReplyAt       DateTime?
-  unansweredTouches Int        @default(0)
-  stageChangedAt    DateTime   @default(now())
+  unansweredTouches Int          @default(0)
+  stageChangedAt    DateTime     @default(now())
   activities        Activity[]
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  emailDrafts       EmailDraft[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   @@index([ownerId])
   @@index([stage])
@@ -114,8 +117,12 @@ model Activity {
   type       String // CALL | EMAIL_OUT | EMAIL_IN | MEETING | VISIT | NOTE | PROPOSAL
   outcome    String? // e.g. CONNECTED | NO_ANSWER | VOICEMAIL | INTERESTED | NOT_INTERESTED
   summary    String?
-  source     String   @default("MANUAL") // MANUAL | GMAIL | CALENDAR | BOT
-  externalId String?  @unique // Gmail message id / Calendar event id, makes sync idempotent
+  source     String   @default("MANUAL") // MANUAL | GMAIL | OUTLOOK | CALENDAR | BOT
+  externalId String?  @unique // provider message id / Calendar event id, makes sync idempotent
+  subject    String? // emails: subject line
+  threadId   String? // emails: Gmail thread id / Outlook conversation id
+  webLink    String? // emails: open the message in Gmail / Outlook
+  mailboxId  String? // emails: the connected mailbox it was synced from or sent through
   leadId     String
   lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
   userId     String?
@@ -125,6 +132,7 @@ model Activity {
 
   @@index([leadId])
   @@index([userId, occurredAt])
+  @@index([threadId])
 }
 
 model Goal {
@@ -167,4 +175,63 @@ model Report {
   updatedAt DateTime @updatedAt
 
   @@index([ownerId])
+}
+
+/**
+ * A user's connected Gmail or Outlook mailbox. Tokens are AES-256-GCM encrypted (src/lib/server/crypto.ts)
+ * and never logged. cursor = Gmail historyId, or the ISO time of the last Outlook sync.
+ */
+model Mailbox {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        String // GMAIL | OUTLOOK
+  address         String
+  refreshToken    String // encrypted
+  accessToken     String? // encrypted, short-lived cache
+  accessExpiresAt DateTime?
+  cursor          String?
+  labelId         String? // Gmail id of the "Standard Projects/Outreach Sent" label
+  status          String    @default("ACTIVE") // ACTIVE | ERROR (needs reconnecting)
+  lastError       String?
+  lastSyncAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, provider])
+}
+
+/**
+ * An email written in the CRM. Reps can only submit for approval; owners and team leads send.
+ */
+model EmailDraft {
+  id                String    @id @default(cuid())
+  leadId            String
+  lead              Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  authorId          String
+  author            User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  to                String
+  subject           String
+  body              String
+  replyToActivityId String? // reply in that email's thread
+  status            String    @default("DRAFT") // DRAFT | AWAITING_APPROVAL | SENT | FAILED
+  approvedById      String?
+  sentAt            DateTime?
+  sentActivityId    String?
+  error             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([leadId])
+  @@index([status])
+}
+
+/**
+ * One-time tickets the database scheduler (pg_cron) creates right before calling /api/email/sync,
+ * so the sync endpoint can trust the call without a shared secret.
+ */
+model CronTicket {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
 }

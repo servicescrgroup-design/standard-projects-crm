@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { csvToObjects } from "@/lib/csv";
 
 type Summary = { read: number; importable: number; created: number; enriched: number; skipped: number };
 
-/** Uploads a Notion "Customers CRM" JSON export straight from the owner's computer. */
+/** Uploads a lead file from the owner's computer: a spreadsheet (.csv), a Notion "Customers CRM" export or a prospects list (.json). */
 export function ImportLeads() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Summary | null>(null);
@@ -19,8 +20,16 @@ export function ImportLeads() {
     setResult(null);
     try {
       const text = await file.text();
-      JSON.parse(text); // fail fast on a wrong file
-      const res = await fetch("/api/import/notion", { method: "POST", headers: { "content-type": "application/json" }, body: text });
+      let body: string;
+      if (/\.csv$/i.test(file.name) || file.type === "text/csv") {
+        const rows = csvToObjects(text);
+        if (rows.length === 0) throw new Error("That CSV has no rows under the header line.");
+        body = JSON.stringify({ format: "csv", rows });
+      } else {
+        JSON.parse(text); // fail fast on a wrong file
+        body = text;
+      }
+      const res = await fetch("/api/import/notion", { method: "POST", headers: { "content-type": "application/json" }, body });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Import failed");
       setResult(data);
@@ -36,12 +45,12 @@ export function ImportLeads() {
     <div className="space-y-2">
       <label className="btn-ghost cursor-pointer">
         {busy ? "Importing…" : "Choose file to import"}
-        <input type="file" accept=".json,application/json" className="sr-only" disabled={busy} onChange={(e) => onFile(e.target.files?.[0])} />
+        <input type="file" accept=".json,.csv,application/json,text/csv" className="sr-only" disabled={busy} onChange={(e) => onFile(e.target.files?.[0])} />
       </label>
       {result && (
         <p className="text-sm text-brand-700">
           {result.created.toLocaleString("en-GB")} new lead{result.created === 1 ? "" : "s"} added
-          {result.enriched > 0 && ` · ${result.enriched.toLocaleString("en-GB")} existing leads updated with Notion details`}
+          {result.enriched > 0 && ` · ${result.enriched.toLocaleString("en-GB")} existing leads filled in with missing details`}
           {result.skipped > 0 && ` · ${result.skipped.toLocaleString("en-GB")} already imported`}
           {result.read > result.importable && ` · ${result.read - result.importable} rows skipped (no company name)`}.
         </p>

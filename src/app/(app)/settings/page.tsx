@@ -1,16 +1,47 @@
-import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/server/session";
 import { db } from "@/lib/server/db";
 import { canManagePeople } from "@/lib/access";
 import { OPEN_STAGES } from "@/lib/domain";
 import { AddPersonForm, CreateTeamForm, PersonRow, TeamRow } from "@/components/SettingsForms";
 import { ImportLeads } from "@/components/ImportLeads";
+import { MailboxSettings } from "@/components/email/MailboxSettings";
+import { isProviderConfigured } from "@/lib/mail/oauth";
 
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ email?: string }> }) {
   const user = await requireUser();
-  if (!canManagePeople(user)) redirect("/dashboard");
+  const isOwner = canManagePeople(user);
+  const { email: emailStatus } = await searchParams;
+  const mailboxes = await db.mailbox.findMany({
+    where: { userId: user.id },
+    select: { provider: true, address: true, status: true, lastError: true, lastSyncAt: true },
+  });
+  const emailSection = (
+    <section id="email" className="card scroll-mt-24 p-4">
+      <h2 className="font-semibold">Email</h2>
+      <p className="mb-3 text-sm text-ink-3">
+        Connect your own mailbox. Emails with your leads are logged on each lead automatically every 10 minutes
+        (other mail is never imported), and you can send emails from lead pages.
+      </p>
+      <MailboxSettings
+        status={emailStatus ?? null}
+        configured={{ GMAIL: isProviderConfigured("GMAIL"), OUTLOOK: isProviderConfigured("OUTLOOK") }}
+        mailboxes={mailboxes.map((m) => ({ ...m, lastSyncAt: m.lastSyncAt?.toISOString() ?? null }))}
+      />
+    </section>
+  );
+  if (!isOwner) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Settings</h1>
+          <p className="text-sm text-ink-3">Your email connection. Teams and people are managed by the owner.</p>
+        </div>
+        {emailSection}
+      </div>
+    );
+  }
 
   const [teamRows, people] = await Promise.all([
     db.team.findMany({ include: { _count: { select: { users: true } } }, orderBy: { name: "asc" } }),
@@ -25,13 +56,16 @@ export default async function SettingsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Settings</h1>
-        <p className="text-sm text-ink-3">Set up your teams and who can see what.</p>
+        <p className="text-sm text-ink-3">Your email connection, teams and who can see what.</p>
       </div>
+
+      {emailSection}
 
       <section className="card p-4">
         <h2 className="font-semibold">Import leads</h2>
         <p className="mb-3 text-sm text-ink-3">
-          Upload a Notion &ldquo;Customers CRM&rdquo; export (.json). New companies arrive unassigned. Companies already in the CRM
+          Upload a spreadsheet (.csv with a header row: Company, Contact, Email, Phone, Website, Location, Country,
+          Industry, Segment, Priority, Source, Stage, Value, Notes), or a Notion &ldquo;Customers CRM&rdquo; export (.json). New companies arrive unassigned. Companies already in the CRM
           (same phone or name) keep their owner and stage and just get the missing Notion details. Importing the same file
           twice is safe. You can also upload an international prospects list (.json); those arrive as unassigned
           cold-outreach leads, skipping any website already in the CRM.

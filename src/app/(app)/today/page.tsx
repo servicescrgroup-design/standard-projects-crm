@@ -19,7 +19,7 @@ export default async function TodayPage() {
   const active = allActive.slice(0, SHOW);
   const hidden = allActive.length - active.length;
   const decisions = queue.filter((q) => q.needsDecision);
-  const replies = active.filter((q) => q.reasons[0]?.startsWith("They replied")).length;
+  const replies = active.filter((q) => q.reasons[0]?.startsWith("Replied")).length;
 
   const toItem = (q: (typeof queue)[number]) => ({
     id: q.lead.id,

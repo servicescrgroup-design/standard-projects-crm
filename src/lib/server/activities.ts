@@ -7,8 +7,12 @@ export type LogActivityArgs = ActivityInput & {
   leadId: string;
   userId: string | null;
   summary?: string | null;
-  source?: "MANUAL" | "GMAIL" | "CALENDAR" | "BOT";
+  source?: "MANUAL" | "GMAIL" | "OUTLOOK" | "CALENDAR" | "BOT";
   externalId?: string | null;
+  subject?: string | null;
+  threadId?: string | null;
+  webLink?: string | null;
+  mailboxId?: string | null;
 };
 
 /**
@@ -31,6 +35,10 @@ export async function logActivity(args: LogActivityArgs) {
         summary: args.summary ?? null,
         source: args.source ?? "MANUAL",
         externalId: args.externalId ?? null,
+        subject: args.subject ?? null,
+        threadId: args.threadId ?? null,
+        webLink: args.webLink ?? null,
+        mailboxId: args.mailboxId ?? null,
         leadId: args.leadId,
         userId: args.userId,
         occurredAt: args.occurredAt,
@@ -63,6 +71,26 @@ export type SyncEvent = {
 
 export type SyncItem = SyncEmail | SyncEvent;
 
+export type MatchContext = { teamEmails: Set<string>; internalDomains: string[]; leads: { id: string; email: string | null; website: string | null }[] };
+
+/** Everything needed to match addresses to leads. Teammates' addresses (and non-free-mail domains) never identify a lead. */
+export async function loadMatchContext(extraInternal: string[] = []): Promise<MatchContext> {
+  const [users, mailboxes, leads] = await Promise.all([
+    db.user.findMany({ select: { email: true } }),
+    db.mailbox.findMany({ select: { address: true } }),
+    db.lead.findMany({ select: { id: true, email: true, website: true } }),
+  ]);
+  const teamEmails = new Set([...users.map((u) => u.email), ...mailboxes.map((m) => m.address), ...extraInternal].map((e) => e.toLowerCase()));
+  const internalDomains = [...teamEmails].map(emailDomain).filter((d) => !isFreeMail(d));
+  return { teamEmails, internalDomains, leads };
+}
+
+/** The lead a set of addresses belongs to, ignoring the team's own addresses. */
+export function leadForAddresses(ctx: MatchContext, addresses: string[]) {
+  const external = addresses.filter((a) => !ctx.teamEmails.has(normaliseEmail(a) ?? ""));
+  return matchLead(external, ctx.leads, ctx.internalDomains);
+}
+
 export type IngestResult = { logged: number; duplicates: number; unmatched: number };
 
 /**
@@ -74,16 +102,12 @@ export async function ingestSyncItems(userEmail: string, items: SyncItem[]): Pro
   const user = await db.user.findUnique({ where: { email: userEmail.toLowerCase() } });
   if (!user) throw new Error(`Unknown user ${userEmail}`);
 
-  // Teammates' addresses never identify a lead. Their domains are excluded too, unless it's free mail.
-  const teamEmails = new Set((await db.user.findMany({ select: { email: true } })).map((u) => u.email.toLowerCase()));
-  const internalDomains = [...teamEmails].map(emailDomain).filter((d) => !isFreeMail(d));
-  const leads = await db.lead.findMany({ select: { id: true, email: true, website: true } });
+  const { teamEmails, internalDomains, leads } = await loadMatchContext();
   const result: IngestResult = { logged: 0, duplicates: 0, unmatched: 0 };
 
   for (const item of items) {
     const addresses = item.kind === "email" ? [item.from, ...item.to, ...(item.cc ?? [])] : item.attendees;
-    const external = addresses.filter((a) => !teamEmails.has(normaliseEmail(a) ?? ""));
-    const lead = matchLead(external, leads, internalDomains);
+    const lead = leadForAddresses({ teamEmails, internalDomains, leads }, addresses);
     if (!lead) {
       result.unmatched++;
       continue;

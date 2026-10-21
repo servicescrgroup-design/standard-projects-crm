@@ -72,3 +72,12 @@ describe("people management", () => {
     expect(wouldLeaveNoOwner([...users, { id: "o2", role: "OWNER" }], "o", null)).toBe(false);
   });
 });
+
+describe("email permissions", () => {
+  it("lets owners and team leads send, reps only draft", async () => {
+    const { canSendEmail } = await import("../access");
+    expect(canSendEmail({ id: "o", role: "OWNER", teamId: null })).toBe(true);
+    expect(canSendEmail({ id: "t", role: "TEAM_LEAD", teamId: "x" })).toBe(true);
+    expect(canSendEmail({ id: "r", role: "REP", teamId: "x" })).toBe(false);
+  });
+});

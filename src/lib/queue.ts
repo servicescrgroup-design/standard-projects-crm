@@ -62,7 +62,7 @@ export function scoreLead<T extends QueueLead>(lead: T, now: Date): QueueItem<T>
   const awaitingReply = isAwaitingOurReply(lead);
   if (awaitingReply) {
     score += 50;
-    reasons.push("They replied, waiting on you");
+    reasons.push("Replied · waiting on you");
   }
 
   score += STAGE_WEIGHT[lead.stage as Stage] ?? 0;

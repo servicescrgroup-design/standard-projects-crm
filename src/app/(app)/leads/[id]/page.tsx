@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/server/session";
 import { db } from "@/lib/server/db";
-import { canAssignTo, canSeeLead } from "@/lib/access";
+import { canAssignTo, canSeeLead, canSendEmail } from "@/lib/access";
 import {
   ACTIVITY_LABELS,
   OUTCOME_LABELS,
@@ -18,6 +18,7 @@ import {
   type Source,
 } from "@/lib/domain";
 import { QuickLogForm } from "@/components/QuickLogForm";
+import { LeadEmailPanel } from "@/components/email/LeadEmailPanel";
 import { updateLead } from "../../../actions";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,7 @@ function links(raw: string | null): string[] {
   return (raw ?? "").split(/[;\s,]+/).filter((s) => /^https?:\/\//i.test(s));
 }
 
-const SOURCE_LABEL: Record<string, string> = { GMAIL: "Gmail", CALENDAR: "Calendar", BOT: "Bot", WEBSITE: "Website", QUOTE: "Quote form", MANUAL: "" };
+const SOURCE_LABEL: Record<string, string> = { GMAIL: "Gmail", OUTLOOK: "Outlook", CALENDAR: "Calendar", BOT: "Bot", WEBSITE: "Website", QUOTE: "Quote form", MANUAL: "" };
 const fmt = (d: Date | null) =>
   d ? d.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 const pounds = (p: number) => (p ? String(p / 100) : "");
@@ -41,7 +42,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   });
   if (!lead || !canSeeLead(user, lead)) notFound();
 
-  const candidates = await db.user.findMany({ orderBy: { name: "asc" } });
+  const [candidates, drafts, myMailboxes] = await Promise.all([
+    db.user.findMany({ orderBy: { name: "asc" } }),
+    db.emailDraft.findMany({ where: { leadId: lead.id, status: { not: "SENT" } }, include: { author: { select: { name: true } } }, orderBy: { updatedAt: "desc" } }),
+    db.mailbox.count({ where: { userId: user.id, status: "ACTIVE" } }),
+  ]);
   const assignable = candidates.filter((c) => canAssignTo(user, c));
   const canAssign = user.role !== "REP";
 
@@ -198,6 +203,17 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             </dl>
           </section>
 
+          <LeadEmailPanel
+            leadId={lead.id}
+            leadEmail={lead.email}
+            lastContactAt={lead.lastContactAt}
+            lastReplyAt={lead.lastReplyAt}
+            emails={lead.activities.filter((a) => a.type === "EMAIL_IN" || a.type === "EMAIL_OUT")}
+            drafts={drafts}
+            canSend={canSendEmail(user)}
+            hasMailbox={myMailboxes > 0}
+          />
+
           <section className="card p-4">
             <h2 className="mb-3 font-semibold">Log activity</h2>
             <QuickLogForm leadId={lead.id} />
@@ -216,7 +232,13 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                         <span className="chip bg-indigo-50 text-indigo-700">Auto · {SOURCE_LABEL[a.source]}</span>
                       )}
                     </div>
+                    {a.subject && <p className="mt-0.5 text-sm font-medium">{a.subject}</p>}
                     {a.summary && <p className="mt-0.5 text-sm text-ink-2">{a.summary}</p>}
+                    {a.webLink && (
+                      <a href={a.webLink} target="_blank" rel="noreferrer" className="text-xs text-brand-700 hover:underline">
+                        Open in {a.source === "OUTLOOK" ? "Outlook" : "Gmail"}
+                      </a>
+                    )}
                   </div>
                   <div className="shrink-0 text-right text-xs text-ink-3">
                     <div>{fmt(a.occurredAt)}</div>

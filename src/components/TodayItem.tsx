@@ -35,7 +35,7 @@ export function TodayItem({ item, rank }: { item: TodayItemData; rank: number })
               <span
                 key={r}
                 className={`chip ${
-                  r.startsWith("They replied")
+                  r.startsWith("Replied")
                     ? "bg-emerald-50 text-emerald-700"
                     : r.startsWith("Overdue")
                       ? "bg-amber-50 text-amber-700"

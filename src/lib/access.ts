@@ -55,6 +55,14 @@ export function canManagePeople(viewer: Viewer): boolean {
 }
 
 /**
+ * Email from the CRM: everyone can draft and view emails on leads they can see; only owners and
+ * team leads (admins/managers) can approve, send or delete them.
+ */
+export function canSendEmail(viewer: Viewer): boolean {
+  return viewer.role === "OWNER" || viewer.role === "TEAM_LEAD";
+}
+
+/**
  * True if removing `targetId`, or changing their role to `newRole`, would leave no owner.
  * Pass newRole = null for removal.
  */

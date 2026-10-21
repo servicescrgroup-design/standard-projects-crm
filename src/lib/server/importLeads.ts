@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "./db";
 import { mapNotionRow, planImport, type ImportedLead, type NotionCustomerRow } from "../notionImport";
+import { mapCsvRows } from "../csvImport";
 import { mapResearchRow, planResearchImport, type ResearchRow } from "../researchImport";
 
 export type ImportSummary = { read: number; importable: number; created: number; enriched: number; skipped: number };
@@ -11,7 +12,15 @@ export type ImportSummary = { read: number; importable: number; created: number;
  * keeping their owner and stage. Re-running is safe.
  */
 export async function importNotionRows(rows: NotionCustomerRow[]): Promise<ImportSummary> {
-  const mapped = rows.map(mapNotionRow).filter((l): l is ImportedLead => l !== null);
+  return importMapped(rows.length, rows.map(mapNotionRow).filter((l): l is ImportedLead => l !== null));
+}
+
+/** Spreadsheet rows (already parsed from CSV): same merge rules as the Notion import. */
+export async function importCsvRows(rows: Record<string, string>[]): Promise<ImportSummary> {
+  return importMapped(rows.length, mapCsvRows(rows));
+}
+
+async function importMapped(read: number, mapped: ImportedLead[]): Promise<ImportSummary> {
   const existing = await db.lead.findMany({
     select: {
       id: true, company: true, phone: true, externalRef: true, contactName: true, email: true, socialLinks: true,
@@ -38,7 +47,7 @@ export async function importNotionRows(rows: NotionCustomerRow[]): Promise<Impor
     await db.$transaction(plan.update.slice(i, i + 50).map((u) => db.lead.update({ where: { id: u.id }, data: u.data })));
   }
 
-  return { read: rows.length, importable: mapped.length, created, enriched: plan.update.length, skipped: plan.skipped };
+  return { read, importable: mapped.length, created, enriched: plan.update.length, skipped: plan.skipped };
 }
 
 /** Imports researched international prospects as new, unassigned leads. Re-running is safe. */

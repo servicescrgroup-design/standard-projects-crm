@@ -11,6 +11,8 @@ import { LeadsWidget, type Segment } from "@/components/dashboard/LeadsWidget";
 import { RetentionWidget } from "@/components/dashboard/RetentionWidget";
 import { LocationsWidget } from "@/components/dashboard/LocationsWidget";
 import { CustomizeWidgets } from "@/components/dashboard/CustomizeWidgets";
+import { EmailPrompt } from "@/components/email/EmailPrompt";
+import { isProviderConfigured } from "@/lib/mail/oauth";
 
 export const dynamic = "force-dynamic";
 
@@ -132,8 +134,15 @@ export default async function DashboardPage() {
   };
 
   const hour = now.getHours();
+  // First-login nudge to connect a mailbox (until connected or dismissed).
+  const prefs = (user.preferences && typeof user.preferences === "object" ? user.preferences : {}) as Record<string, unknown>;
+  const providers = { gmail: isProviderConfigured("GMAIL"), outlook: isProviderConfigured("OUTLOOK") };
+  const showEmailPrompt =
+    (providers.gmail || providers.outlook) && !prefs.emailPromptDismissed && (await db.mailbox.count({ where: { userId: user.id } })) === 0;
+
   return (
     <div className="space-y-5">
+      {showEmailPrompt && <EmailPrompt {...providers} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-2">
           {hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"}, {user.name.split(" ")[0]}. Here&apos;s how sales are going.

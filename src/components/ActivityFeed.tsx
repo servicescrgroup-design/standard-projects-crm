@@ -6,13 +6,15 @@ export type FeedItem = {
   type: string;
   outcome: string | null;
   summary: string | null;
+  subject?: string | null;
+  webLink?: string | null;
   source: string;
   occurredAt: Date;
   lead: { id: string; company: string };
   user: { name: string } | null;
 };
 
-const SOURCE: Record<string, string> = { GMAIL: "Gmail", CALENDAR: "Calendar", WEBSITE: "Website", QUOTE: "Quote form", BOT: "Bot" };
+const SOURCE: Record<string, string> = { GMAIL: "Gmail", OUTLOOK: "Outlook", CALENDAR: "Calendar", WEBSITE: "Website", QUOTE: "Quote form", BOT: "Bot" };
 
 /** Shared list of logged activities (notes, emails, meetings), each linking to its lead. */
 export function ActivityFeed({ items, empty }: { items: FeedItem[]; empty: string }) {
@@ -28,7 +30,13 @@ export function ActivityFeed({ items, empty }: { items: FeedItem[]; empty: strin
               {a.outcome && <span className="chip">{OUTCOME_LABELS[a.outcome as Outcome] ?? a.outcome}</span>}
               {SOURCE[a.source] && <span className="chip bg-brand-50 text-brand-700">Auto · {SOURCE[a.source]}</span>}
             </div>
+            {a.subject && <p className="mt-1 text-sm font-medium">{a.subject}</p>}
             {a.summary && <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm text-ink-2">{a.summary}</p>}
+            {a.webLink && (
+              <a href={a.webLink} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-brand-700 hover:underline">
+                Open in {a.source === "OUTLOOK" ? "Outlook" : "Gmail"}
+              </a>
+            )}
           </div>
           <div className="shrink-0 text-right text-xs text-ink-3">
             <div>{a.occurredAt.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div>
