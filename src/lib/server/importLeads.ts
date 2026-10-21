@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "./db";
 import { mapNotionRow, planImport, type ImportedLead, type NotionCustomerRow } from "../notionImport";
+import { mapResearchRow, planResearchImport, type ResearchRow } from "../researchImport";
 
 export type ImportSummary = { read: number; importable: number; created: number; enriched: number; skipped: number };
 
@@ -38,4 +39,20 @@ export async function importNotionRows(rows: NotionCustomerRow[]): Promise<Impor
   }
 
   return { read: rows.length, importable: mapped.length, created, enriched: plan.update.length, skipped: plan.skipped };
+}
+
+/** Imports researched international prospects as new, unassigned leads. Re-running is safe. */
+export async function importResearchRows(rows: ResearchRow[]): Promise<ImportSummary> {
+  const mapped = rows.map(mapResearchRow).filter((l): l is ImportedLead => l !== null);
+  const existing = await db.lead.findMany({ select: { company: true, website: true, externalRef: true } });
+  const plan = planResearchImport(mapped, existing);
+  let created = 0;
+  for (let i = 0; i < plan.create.length; i += 200) {
+    const { count } = await db.lead.createMany({
+      data: plan.create.slice(i, i + 200).map((l) => ({ ...l, createdAt: undefined })),
+      skipDuplicates: true,
+    });
+    created += count;
+  }
+  return { read: rows.length, importable: mapped.length, created, enriched: 0, skipped: plan.skipped };
 }

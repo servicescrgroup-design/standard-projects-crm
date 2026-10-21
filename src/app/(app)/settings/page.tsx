@@ -33,7 +33,8 @@ export default async function SettingsPage() {
         <p className="mb-3 text-sm text-ink-3">
           Upload a Notion &ldquo;Customers CRM&rdquo; export (.json). New companies arrive unassigned. Companies already in the CRM
           (same phone or name) keep their owner and stage and just get the missing Notion details. Importing the same file
-          twice is safe.
+          twice is safe. You can also upload an international prospects list (.json); those arrive as unassigned
+          cold-outreach leads, skipping any website already in the CRM.
         </p>
         <ImportLeads />
       </section>

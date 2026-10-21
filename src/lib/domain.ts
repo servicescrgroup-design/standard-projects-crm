@@ -67,6 +67,14 @@ export const SEGMENTS = [
   "Gym",
   "Export-Trading",
   "Multi-location",
+  "Wellness",
+  "Hospitality",
+  "Restaurant",
+  "Cannabis-CBD",
+  "Trades",
+  "Clinic",
+  "Professional-Services",
+  "Retail",
 ] as const;
 
 export const PACKAGES = ["Starter", "Business", "Growth", "Custom"] as const;

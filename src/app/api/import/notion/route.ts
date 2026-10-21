@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/server/session";
 import { canManagePeople } from "@/lib/access";
-import { importNotionRows } from "@/lib/server/importLeads";
+import { importNotionRows, importResearchRows } from "@/lib/server/importLeads";
+import { isResearchFile } from "@/lib/researchImport";
 
 const MAX_BYTES = 4 * 1024 * 1024;
 const MAX_ROWS = 5000;
 
-/** Owner-only: import a JSON array of Notion "Customers CRM" rows (see src/lib/notionImport.ts). */
+/** Owner-only: import a JSON array of Notion "Customers CRM" rows or researched prospects (see src/lib/notionImport.ts, src/lib/researchImport.ts). */
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user || !canManagePeople(user)) return NextResponse.json({ error: "Only the owner can import leads" }, { status: 403 });
@@ -22,5 +23,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Every row must be an object" }, { status: 400 });
   }
 
-  return NextResponse.json(await importNotionRows(rows));
+  return NextResponse.json(isResearchFile(rows) ? await importResearchRows(rows) : await importNotionRows(rows));
 }
