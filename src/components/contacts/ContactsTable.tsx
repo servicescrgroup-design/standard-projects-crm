@@ -370,7 +370,7 @@ export function ContactsTable({ rows, sort, sortHref }: { rows: ContactRow[]; so
                   <td className="py-4 pr-5 align-middle">
                     <div className="flex items-center justify-end gap-1 text-ink-2">
                       {r.phone && (
-                        <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`} aria-label={`Call ${r.company}`} className="rounded-lg p-2 hover:bg-white hover:text-ink"><Phone className="h-4 w-4" /></a>
+                        <Link href={`/leads/${r.id}?call=1`} aria-label={`Call ${r.company}`} className="rounded-lg p-2 hover:bg-white hover:text-ink"><Phone className="h-4 w-4" /></Link>
                       )}
                       {r.email && (
                         <Link href={`/leads/${r.id}#email`} aria-label={`Email ${r.company}`} className="rounded-lg p-2 hover:bg-white hover:text-ink"><Mail className="h-4 w-4" /></Link>

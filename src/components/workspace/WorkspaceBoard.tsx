@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDown, ArrowUp, ArrowUpRight, CalendarDays, FileText, Flame, Handshake, Mail, MessageSquareReply, Phone, Plus, Search, Target, Users, X,
@@ -101,7 +101,14 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
   const [newTask, setNewTask] = useState(false);
   const [pending, start] = useTransition();
   const today = new Date(data.today);
-  const now = nowPosition(new Date());
+  // Computed in the browser only, so the server and client render the same HTML.
+  const [now, setNow] = useState<{ pos: number | null; label: string }>({ pos: null, label: "" });
+  useEffect(() => {
+    const tick = () => setNow({ pos: nowPosition(new Date()), label: time(new Date().toISOString()) });
+    tick();
+    const t = setInterval(tick, 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   const leads = useMemo(
     () => data.leads.filter((l) => (leadFilter === "all" || l.interest === leadFilter) && (!leadQuery || `${l.name} ${l.subtitle}`.toLowerCase().includes(leadQuery.toLowerCase()))),
@@ -167,9 +174,9 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
               </Link>
             );
           })}
-          {now !== null && (
-            <span className="absolute top-0 h-full w-0.5 bg-black" style={{ left: `${now}%` }}>
-              <span className="absolute -top-0 left-1/2 -translate-x-1/2 rounded-full bg-black px-2 py-0.5 text-[10px] text-white">{time(new Date().toISOString())}</span>
+          {now.pos !== null && (
+            <span className="absolute top-0 h-full w-0.5 bg-black" style={{ left: `${now.pos}%` }}>
+              <span className="absolute -top-0 left-1/2 -translate-x-1/2 rounded-full bg-black px-2 py-0.5 text-[10px] text-white">{now.label}</span>
             </span>
           )}
         </div>
@@ -325,7 +332,7 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
                         </select>
                       </label>
                       {t.email && <RoundIcon href={`/leads/${t.id}#email`} label={`Email ${t.contact}`}><Mail className="h-4 w-4" /></RoundIcon>}
-                      {t.phone && <RoundIcon href={`tel:${t.phone.replace(/[^\d+]/g, "")}`} label={`Call ${t.contact}`} dark><Phone className="h-4 w-4" /></RoundIcon>}
+                      {t.phone && <RoundIcon href={`/leads/${t.id}?call=1`} label={`Call ${t.contact}`} dark><Phone className="h-4 w-4" /></RoundIcon>}
                     </div>
                   </article>
                 );
@@ -356,9 +363,9 @@ export function WorkspaceBoard({ data }: { data: WorkspaceData }) {
                 {nextUp.reasons.length > 0 && <p className="mt-3 text-xs text-white/50">{nextUp.reasons.join(" · ")}</p>}
                 <div className="mt-4 flex gap-2">
                   {nextUp.phone && (
-                    <a href={`tel:${nextUp.phone.replace(/[^\d+]/g, "")}`} className={`inline-flex flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-sm font-medium text-black ${LIME}`}>
+                    <Link href={`/leads/${nextUp.id}?call=1`} className={`inline-flex flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-sm font-medium text-black ${LIME}`}>
                       <Phone className="h-4 w-4" /> Call
-                    </a>
+                    </Link>
                   )}
                   <Link href={`/leads/${nextUp.id}${nextUp.email ? "#email" : ""}`} className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/15 py-2.5 text-sm hover:bg-white/10">
                     {nextUp.email ? <><Mail className="h-4 w-4" /> Email</> : <>Open lead</>}

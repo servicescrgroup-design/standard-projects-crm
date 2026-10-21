@@ -6,6 +6,7 @@ import { AddPersonForm, CreateTeamForm, PersonRow, TeamRow } from "@/components/
 import { ImportLeads } from "@/components/ImportLeads";
 import { MailboxSettings } from "@/components/email/MailboxSettings";
 import { isProviderConfigured } from "@/lib/mail/oauth";
+import { TwilioSettings } from "@/components/voice/TwilioSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     where: { userId: user.id },
     select: { provider: true, address: true, status: true, lastError: true, lastSyncAt: true },
   });
+  const twilio = await db.twilioConnection.findUnique({ where: { userId: user.id }, select: { callerId: true, accountSid: true, record: true } });
+  const phoneSection = (
+    <section id="phone" className="card scroll-mt-24 p-4">
+      <h2 className="font-semibold">Phone &amp; meetings</h2>
+      <p className="mb-3 text-sm text-ink-3">How you call leads from the CRM. Meetings use a free video room (no app to install) with notes saved to the lead.</p>
+      <TwilioSettings connection={twilio} />
+    </section>
+  );
   const emailSection = (
     <section id="email" className="card scroll-mt-24 p-4">
       <h2 className="font-semibold">Email</h2>
@@ -39,6 +48,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <p className="text-sm text-ink-3">Your email connection. Teams and people are managed by the owner.</p>
         </div>
         {emailSection}
+        {phoneSection}
       </div>
     );
   }
@@ -60,6 +70,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </div>
 
       {emailSection}
+      {phoneSection}
 
       <section className="card p-4">
         <h2 className="font-semibold">Import leads</h2>

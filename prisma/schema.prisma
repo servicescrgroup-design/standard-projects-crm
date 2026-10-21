@@ -19,22 +19,23 @@ model Team {
 }
 
 model User {
-  id           String       @id @default(cuid())
+  id           String            @id @default(cuid())
   name         String
-  email        String       @unique
+  email        String            @unique
   role         String // OWNER | TEAM_LEAD | REP
   teamId       String?
-  team         Team?        @relation(fields: [teamId], references: [id])
+  team         Team?             @relation(fields: [teamId], references: [id])
   leads        Lead[]
   activities   Activity[]
   goals        Goal[]
   invites      Invite[]
   reports      Report[]
   mailboxes    Mailbox[]
+  twilio       TwilioConnection?
   emailDrafts  EmailDraft[]
   passwordHash String? // null until the person sets a password via their invite link
-  preferences  Json         @default("{}") // per-user UI settings, e.g. dashboard widget order
-  createdAt    DateTime     @default(now())
+  preferences  Json              @default("{}") // per-user UI settings, e.g. dashboard widget order
+  createdAt    DateTime          @default(now())
 }
 
 /**
@@ -234,4 +235,22 @@ model CronTicket {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   createdAt DateTime  @default(now())
   usedAt    DateTime?
+}
+
+/**
+ * An agent's own Twilio account for calling from the browser. The API key secret is AES-256-GCM
+ * encrypted; the TwiML app is created by the CRM and points at /api/voice/twiml.
+ */
+model TwilioConnection {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountSid   String
+  apiKeySid    String
+  apiKeySecret String // encrypted
+  appSid       String // TwiML app created by the CRM
+  callerId     String // E.164 Twilio number (or verified caller ID) calls come from
+  record       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

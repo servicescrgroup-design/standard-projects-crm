@@ -19,6 +19,9 @@ import {
 } from "@/lib/domain";
 import { QuickLogForm } from "@/components/QuickLogForm";
 import { LeadEmailPanel } from "@/components/email/LeadEmailPanel";
+import { LeadComms } from "@/components/voice/LeadComms";
+import { countryOf } from "@/lib/countries";
+import { toE164 } from "@/lib/phone";
 import { updateLead } from "../../../actions";
 
 export const dynamic = "force-dynamic";
@@ -33,19 +36,21 @@ const fmt = (d: Date | null) =>
   d ? d.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 const pounds = (p: number) => (p ? String(p / 100) : "");
 
-export default async function LeadPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function LeadPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ call?: string; meeting?: string }> }) {
   const user = await requireUser();
   const { id } = await params;
+  const sp = await searchParams;
   const lead = await db.lead.findUnique({
     where: { id },
     include: { owner: true, activities: { include: { user: true }, orderBy: { occurredAt: "desc" } } },
   });
   if (!lead || !canSeeLead(user, lead)) notFound();
 
-  const [candidates, drafts, myMailboxes] = await Promise.all([
+  const [candidates, drafts, myMailboxes, twilioConnected] = await Promise.all([
     db.user.findMany({ orderBy: { name: "asc" } }),
     db.emailDraft.findMany({ where: { leadId: lead.id, status: { not: "SENT" } }, include: { author: { select: { name: true } } }, orderBy: { updatedAt: "desc" } }),
     db.mailbox.count({ where: { userId: user.id, status: "ACTIVE" } }),
+    db.twilioConnection.count({ where: { userId: user.id } }),
   ]);
   const assignable = candidates.filter((c) => canAssignTo(user, c));
   const canAssign = user.role !== "REP";
@@ -62,14 +67,14 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             {[lead.contactName, lead.location, lead.industry].filter(Boolean).join(" · ")}
           </p>
         </div>
-        <div className="flex gap-2">
-          {lead.phone && (
-            <a className="btn-ghost" href={`tel:${lead.phone.replace(/\s/g, "")}`}>
-              Call {lead.phone}
-            </a>
-          )}
+        <div className="flex flex-wrap gap-2">
+          <LeadComms
+            lead={{ id: lead.id, company: lead.company, contactName: lead.contactName, phone: lead.phone, e164: toE164(lead.phone, countryOf(lead.location)?.code ?? "TH") }}
+            hasTwilio={twilioConnected > 0}
+            autoOpen={sp.call ? "call" : sp.meeting ? "meeting" : null}
+          />
           {lead.email && (
-            <a className="btn-ghost" href={`mailto:${lead.email}`}>
+            <a className="btn-ghost" href="#email">
               Email
             </a>
           )}
@@ -233,7 +238,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                       )}
                     </div>
                     {a.subject && <p className="mt-0.5 text-sm font-medium">{a.subject}</p>}
-                    {a.summary && <p className="mt-0.5 text-sm text-ink-2">{a.summary}</p>}
+                    {a.summary && <p className="mt-0.5 whitespace-pre-line text-sm text-ink-2">{a.summary}</p>}
                     {a.webLink && (
                       <a href={a.webLink} target="_blank" rel="noreferrer" className="text-xs text-brand-700 hover:underline">
                         Open in {a.source === "OUTLOOK" ? "Outlook" : "Gmail"}
