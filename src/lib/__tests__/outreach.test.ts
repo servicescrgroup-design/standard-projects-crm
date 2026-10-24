@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { OPT_OUT_LINE, firstName, leadMergeContext, missingFields, rankTemplates, renderTemplate, starterTemplate, templateFit, templateLanguage } from "../templates";
+import { OPT_OUT_LINE, firstName, languageForCountry, leadMergeContext, missingFields, rankTemplates, renderTemplate, starterTemplate, templateFit, templateLanguage } from "../templates";
+import { PACK_INDUSTRIES, PACK_REGIONS, industryTemplatePack } from "../industryTemplates";
 import { nextRunAt, stopReason } from "../sequences";
 import { quoteNumber, quoteTotals, sanitizeItems, isExpired } from "../quotes";
 import { pickAssignee, sanitizeAssignment, waitingFor } from "../assignment";
@@ -134,5 +135,36 @@ describe("country and industry templates", () => {
   it("has a German opt-out line", () => {
     expect(OPT_OUT_LINE[templateLanguage("de")]).toMatch(/Nein danke/);
     expect(templateLanguage("xx")).toBe("en");
+  });
+});
+
+describe("industry template pack", () => {
+  const pack = industryTemplatePack();
+
+  it("covers every industry for every country group, with unique ids", () => {
+    expect(pack).toHaveLength(PACK_INDUSTRIES.length * PACK_REGIONS.length);
+    expect(new Set(pack.map((t) => t.id)).size).toBe(pack.length);
+    for (const country of ["United States", "Germany", "Thailand", "Spain", "Italy", "France", "Australia", "Sweden"])
+      for (const industry of PACK_INDUSTRIES)
+        expect(rankTemplates(pack, { country, industry })[0].fit, `${country} ${industry}`).toBe(3);
+  });
+
+  it("writes each version in its country's language and leaves no broken merge fields", () => {
+    const de = pack.find((t) => t.countries.includes("Austria") && t.industries[0] === "Clinic")!;
+    expect(de.language).toBe("de");
+    expect(de.body).toContain("Praxen und Kliniken");
+    for (const t of pack) {
+      expect(t.language).toBe(languageForCountry(t.countries[0]));
+      const out = renderTemplate(t.body, { company: "Acme", agent_name: "Richard" });
+      expect(out).not.toMatch(/\{\{|\}\}/);
+      expect(out).toContain("Acme");
+    }
+  });
+
+  it("uses British spelling outside the US and Canada", () => {
+    const uk = pack.find((t) => t.id === "tpl_pack_uk_trades")!;
+    const us = pack.find((t) => t.id === "tpl_pack_us_trades")!;
+    expect(uk.subject).toBe("More job enquiries for {{company}}");
+    expect(us.subject).toBe("More job inquiries for {{company}}");
   });
 });

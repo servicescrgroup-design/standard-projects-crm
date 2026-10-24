@@ -76,12 +76,15 @@ export function missingFields(text: string, ctx: MergeContext): MergeKey[] {
   return [...missing];
 }
 
-export type TemplateLanguage = "en" | "th" | "de";
+export type TemplateLanguage = "en" | "th" | "de" | "es" | "it" | "fr";
 
 export const TEMPLATE_LANGUAGES: { value: TemplateLanguage; label: string; short: string }[] = [
   { value: "en", label: "English", short: "EN" },
   { value: "th", label: "ภาษาไทย", short: "TH" },
   { value: "de", label: "Deutsch", short: "DE" },
+  { value: "es", label: "Español", short: "ES" },
+  { value: "it", label: "Italiano", short: "IT" },
+  { value: "fr", label: "Français", short: "FR" },
 ];
 
 /** A stored language code, falling back to English for anything unknown. */
@@ -98,12 +101,18 @@ export const OPT_OUT_LINE: Record<TemplateLanguage, string> = {
   en: "If you'd rather not hear from me again, just reply \"no thanks\" and I won't email you again.",
   th: "หากไม่ต้องการรับอีเมลจากเราอีก ตอบกลับว่า \"ไม่สนใจ\" ได้เลยครับ/ค่ะ แล้วเราจะไม่ส่งอีเมลมาอีก",
   de: "Falls Sie keine weiteren E-Mails von mir wünschen, antworten Sie einfach mit „Nein danke“ – dann schreibe ich Ihnen nicht mehr.",
+  es: "Si prefiere no recibir más correos míos, responda simplemente «no, gracias» y no volveré a escribirle.",
+  it: "Se preferisce non ricevere altre email da parte mia, risponda semplicemente «no grazie» e non le scriverò più.",
+  fr: "Si vous préférez ne plus recevoir d’e-mails de ma part, répondez simplement « non merci » et je ne vous écrirai plus.",
 };
 
 /** The language a template for this country is usually written in. */
 export function languageForCountry(country: string | null | undefined): TemplateLanguage {
   if (country === "Thailand") return "th";
   if (country === "Germany" || country === "Austria" || country === "Switzerland") return "de";
+  if (country === "Spain") return "es";
+  if (country === "Italy") return "it";
+  if (country === "France") return "fr";
   return "en";
 }
 
@@ -136,7 +145,7 @@ export function targetLabel(t: TargetedTemplate): string {
 }
 
 type Starter = { subject: string; body: string };
-const STARTERS: Record<TemplateLanguage, Record<string, (industry: string) => Starter>> = {
+const STARTERS: Partial<Record<TemplateLanguage, Record<string, (industry: string) => Starter>>> = {
   en: {
     Intro: (ind) => ({
       subject: "Quick idea for {{company}}'s website",
@@ -171,8 +180,11 @@ const STARTERS: Record<TemplateLanguage, Record<string, (industry: string) => St
 
 /** A first draft for a new country/industry template, in that country's language. */
 export function starterTemplate(opts: { country: string | null; industry: string | null; category: string }): Starter & { language: TemplateLanguage; name: string } {
-  const language = languageForCountry(opts.country);
-  const make = STARTERS[language][opts.category] ?? STARTERS[language].Intro;
+  // Languages without starters (Spanish, Italian, French) begin in English; the industry pack has written versions.
+  const wanted = languageForCountry(opts.country);
+  const language = STARTERS[wanted] ? wanted : "en";
+  const set = STARTERS[language]!;
+  const make = set[opts.category] ?? set.Intro;
   const name = [opts.category, opts.country, opts.industry].filter(Boolean).join(" – ");
   return { ...make(opts.industry ?? ""), language, name };
 }

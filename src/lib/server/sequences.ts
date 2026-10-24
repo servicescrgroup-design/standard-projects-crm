@@ -10,10 +10,25 @@ import { replySubject } from "../mail/mime";
 import { EMAIL_RESTRICTED_COUNTRIES, SEQUENCE_LIMITS, nextRunAt, stopReason } from "../sequences";
 import { OPT_OUT_LINE, leadMergeContext, renderTemplate, templateLanguage } from "../templates";
 import { DEFAULT_TEMPLATES, DEFAULT_SEQUENCES } from "../outreachDefaults";
+import { industryTemplatePack } from "../industryTemplates";
 
-/** First visit to Outreach: add the starter templates and sequences (English + Thai). */
+/** First visit to Outreach: add the starter templates and sequences, then (once) the industry template pack. */
 export async function ensureOutreachDefaults(userId: string) {
-  if ((await db.emailTemplate.count()) > 0) return;
+  if ((await db.emailTemplate.count()) === 0) await createStarterTemplates(userId);
+  await ensureIndustryPack(userId);
+}
+
+const PACK_KEY = "templates.industryPack";
+
+/** Adds the country × industry intro templates one time; ones you delete afterwards stay deleted. */
+async function ensureIndustryPack(userId: string) {
+  if (await db.appSetting.findUnique({ where: { key: PACK_KEY } })) return;
+  const pack = industryTemplatePack();
+  const { count } = await db.emailTemplate.createMany({ data: pack.map((t) => ({ ...t, createdById: userId })), skipDuplicates: true });
+  await db.appSetting.upsert({ where: { key: PACK_KEY }, create: { key: PACK_KEY, value: { version: 1, added: count } }, update: {} });
+}
+
+async function createStarterTemplates(userId: string) {
   const created = new Map<string, string>();
   for (const t of DEFAULT_TEMPLATES) {
     const row = await db.emailTemplate.create({ data: { name: t.name, category: t.category, language: t.language, subject: t.subject, body: t.body, createdById: userId } });
