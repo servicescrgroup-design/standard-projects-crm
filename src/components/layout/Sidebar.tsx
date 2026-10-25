@@ -28,8 +28,7 @@ import {
   Users,
   Workflow,
   X,
-  type LucideIcon,
-} from "lucide-react";
+  type LucideIcon, PhoneCall } from "lucide-react";
 import { signOut } from "@/app/actions";
 
 export type SidebarUser = { name: string; email: string; role: string };
@@ -41,6 +40,7 @@ const MAIN: NavItem[] = [
   { href: "/workspace", label: "Workspace", icon: Briefcase },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/deals", label: "Deals", icon: Handshake },
+  { href: "/calls", label: "Call list", icon: PhoneCall },
   { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/emails", label: "Emails", icon: Mail },
   { href: "/outreach", label: "Outreach", icon: Send },

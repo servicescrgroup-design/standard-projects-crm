@@ -15,11 +15,39 @@ import { undeliverableReason } from "./emailCheck";
 import { OPT_OUT_LINE, leadMergeContext, renderTemplate, templateLanguage } from "../templates";
 import { DEFAULT_TEMPLATES, DEFAULT_SEQUENCES } from "../outreachDefaults";
 import { industryTemplatePack } from "../industryTemplates";
+import { LOCAL_SEQUENCES, LOCAL_WAIT_DAYS } from "../localSequences";
 
 /** First visit to Outreach: add the starter templates and sequences, then (once) the industry template pack. */
 export async function ensureOutreachDefaults(userId: string) {
   if ((await db.emailTemplate.count()) === 0) await createStarterTemplates(userId);
   await ensureIndustryPack(userId);
+  await ensureLocalSequences(userId);
+}
+
+const LOCAL_KEY = "sequences.localLanguages";
+
+/** Adds the Spanish, Italian and French 4-email sequences one time. */
+async function ensureLocalSequences(userId: string) {
+  if (await db.appSetting.findUnique({ where: { key: LOCAL_KEY } })) return;
+  for (const seq of LOCAL_SEQUENCES) {
+    const ids = seq.emails.map((_e, i) => `tpl_seq_${seq.language}_${i}`);
+    await db.emailTemplate.createMany({
+      data: seq.emails.map((e, i) => ({ id: ids[i], ...e, language: seq.language, countries: [seq.country], industries: [], createdById: userId })),
+      skipDuplicates: true,
+    });
+    const id = `seq_${seq.language}`;
+    if (await db.sequence.findUnique({ where: { id } })) continue;
+    await db.sequence.create({
+      data: {
+        id,
+        name: seq.name,
+        description: seq.description,
+        createdById: userId,
+        steps: { create: ids.map((templateId, i) => ({ position: i, waitDays: LOCAL_WAIT_DAYS[i], templateId })) },
+      },
+    });
+  }
+  await db.appSetting.upsert({ where: { key: LOCAL_KEY }, create: { key: LOCAL_KEY, value: { version: 1 } }, update: {} });
 }
 
 const PACK_KEY = "templates.industryPack";
@@ -243,7 +271,7 @@ export async function runDueSequences(budgetMs = 30_000): Promise<RunResult> {
     const subject = previous ? replySubject(firstSubject) : renderTemplate(step.template.subject, ctx);
     const body = `${renderTemplate(step.template.body, ctx)}\n\n${OPT_OUT_LINE[lang]}`;
     const draft = await db.emailDraft.create({
-      data: { leadId: e.leadId, authorId: author.id, to: e.lead.email!, subject, body, status: "DRAFT", replyToActivityId: previous?.sentActivityId ?? null },
+      data: { leadId: e.leadId, authorId: author.id, to: e.lead.email!, subject, body, status: "DRAFT", replyToActivityId: previous?.sentActivityId ?? null, templateId: step.templateId },
     });
     try {
       await sendDraft(draft.id, e.approvedById ?? author.id);

@@ -8,6 +8,8 @@ import { MailboxSettings } from "@/components/email/MailboxSettings";
 import { isProviderConfigured } from "@/lib/mail/oauth";
 import { TwilioSettings } from "@/components/voice/TwilioSettings";
 import { PriceList } from "@/components/settings/PriceList";
+import { FillIndustries } from "@/components/settings/FillIndustries";
+import { missingIndustryPlan } from "@/lib/server/industries";
 import { AssignmentSettings } from "@/components/settings/AssignmentSettings";
 import { getAssignment } from "@/lib/server/assignment";
 import { leadFacets } from "@/lib/server/leadFilters";
@@ -58,10 +60,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     );
   }
 
-  const [assignment, prices, facets] = await Promise.all([
+  const [assignment, prices, facets, industryPlan] = await Promise.all([
     getAssignment(),
     db.priceItem.findMany({ where: { active: true }, orderBy: [{ position: "asc" }, { name: "asc" }] }),
     leadFacets(user),
+    missingIndustryPlan(),
   ]);
   const [teamRows, people] = await Promise.all([
     db.team.findMany({ include: { _count: { select: { users: true } } }, orderBy: { name: "asc" } }),
@@ -110,6 +113,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           cold-outreach leads, skipping any website already in the CRM.
         </p>
         <ImportLeads />
+      </section>
+
+      <section id="industries" className="card scroll-mt-24 p-4">
+        <h2 className="font-semibold">Missing industries</h2>
+        <p className="mb-3 text-sm text-ink-3">Industry decides which email templates agents are offered, so leads without one only get general templates.</p>
+        <FillIndustries
+          missing={industryPlan.missing}
+          guesses={[...industryPlan.bySegment].map(([segment, ids]) => ({ segment, count: ids.length })).sort((a, b) => b.count - a.count)}
+        />
       </section>
 
       <section className="card">

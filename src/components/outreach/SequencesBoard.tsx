@@ -8,7 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { toast } from "@/components/ui/Toaster";
 import { languageInfo } from "@/lib/templates";
 
-export type TemplateView = { id: string; name: string; category: string | null; language: string; subject: string; body: string; countries: string[]; industries: string[] };
+export type TemplateView = { id: string; name: string; category: string | null; language: string; subject: string; body: string; countries: string[]; industries: string[]; stats?: { sent: number; replied: number } | null };
 export type SequenceView = {
   id: string;
   name: string;

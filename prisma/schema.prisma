@@ -228,6 +228,7 @@ model EmailDraft {
   subject           String
   body              String
   replyToActivityId String? // reply in that email's thread
+  templateId        String? // the template it started from (for reply-rate stats)
   status            String    @default("DRAFT") // DRAFT | AWAITING_APPROVAL | SENT | FAILED
   approvedById      String?
   sentAt            DateTime?
@@ -238,6 +239,7 @@ model EmailDraft {
 
   @@index([leadId])
   @@index([status])
+  @@index([templateId])
 }
 
 /**

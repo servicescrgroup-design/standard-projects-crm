@@ -79,6 +79,7 @@ export async function saveEmailDraft(_prev: EmailResult, fd: FormData): Promise<
   const subject = String(fd.get("subject") ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, 300);
   const body = String(fd.get("body") ?? "").trim();
   const replyTo = String(fd.get("replyToActivityId") ?? "") || null;
+  const templateId = String(fd.get("templateId") ?? "").slice(0, 60) || null;
   let intent = String(fd.get("intent") ?? "draft");
   if (to.length === 0) return fail("Add at least one valid email address");
   if (to.length > 10) return fail("At most 10 recipients");
@@ -92,7 +93,7 @@ export async function saveEmailDraft(_prev: EmailResult, fd: FormData): Promise<
   }
 
   const draftId = String(fd.get("draftId") ?? "");
-  const data = { to: to.join(", "), subject, body, replyToActivityId: replyTo, status: intent === "draft" ? "DRAFT" : "AWAITING_APPROVAL", error: null };
+  const data = { to: to.join(", "), subject, body, replyToActivityId: replyTo, templateId, status: intent === "draft" ? "DRAFT" : "AWAITING_APPROVAL", error: null };
   let id: string;
   if (draftId) {
     const existing = await db.emailDraft.findUnique({ where: { id: draftId } });

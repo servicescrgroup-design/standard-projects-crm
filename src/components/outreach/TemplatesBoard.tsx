@@ -140,6 +140,7 @@ export function TemplatesBoard({ templates, canEdit, industries }: { templates: 
                 {!targetLabel(t) && <span className="chip text-ink-3">Any lead</span>}
               </div>
               <p className="truncate text-sm text-ink-2">{t.subject}</p>
+              <TemplateStats stats={t.stats} />
             </div>
             {canEdit && (
               <button type="button" aria-label={`Edit ${t.name}`} className="btn px-2 hover:bg-hover" onClick={() => setEditing({ id: t.id, name: t.name, category: t.category ?? "Other", language: t.language, subject: t.subject, body: t.body, countries: t.countries, industries: t.industries })}>
@@ -150,5 +151,18 @@ export function TemplatesBoard({ templates, canEdit, industries }: { templates: 
         ))}
       </div>
     </div>
+  );
+}
+
+/** "24 sent · 5 replies (21%)". Green from 10% up, after enough sends to mean something. */
+function TemplateStats({ stats }: { stats?: { sent: number; replied: number } | null }) {
+  if (!stats?.sent) return <p className="text-xs text-ink-3">Not sent yet</p>;
+  const rate = Math.round((stats.replied / stats.sent) * 100);
+  const good = stats.sent >= 10 && rate >= 10;
+  return (
+    <p className="text-xs text-ink-3">
+      {stats.sent} sent · <span className={good ? "font-medium text-emerald-700" : ""}>{stats.replied} {stats.replied === 1 ? "reply" : "replies"} ({rate}%)</span>
+      {stats.sent < 10 && " · too early to judge"}
+    </p>
   );
 }

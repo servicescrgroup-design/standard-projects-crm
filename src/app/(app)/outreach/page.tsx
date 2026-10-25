@@ -17,7 +17,7 @@ export default async function OutreachPage({ searchParams }: { searchParams: Pro
   await ensureOutreachDefaults(user.id);
   const canEdit = canSendEmail(user);
 
-  const [templates, sequences, counts, recent, segments] = await Promise.all([
+  const [templates, sequences, counts, recent, segments, replyStats] = await Promise.all([
     db.emailTemplate.findMany({ orderBy: [{ language: "asc" }, { category: "asc" }, { name: "asc" }] }),
     db.sequence.findMany({ orderBy: { createdAt: "asc" }, include: { steps: { orderBy: { position: "asc" }, include: { template: { select: { name: true } } } } } }),
     db.sequenceEnrollment.groupBy({ by: ["sequenceId", "status"], where: { lead: leadScope(user) }, _count: { _all: true } }),
@@ -28,12 +28,23 @@ export default async function OutreachPage({ searchParams }: { searchParams: Pro
       include: { lead: { select: { id: true, company: true } }, sequence: { select: { name: true, steps: { select: { id: true } } } } },
     }),
     db.lead.groupBy({ by: ["segment"], where: { segment: { not: null } }, _count: { _all: true } }),
+    // Per template: emails sent, and how many got a reply within 14 days.
+    db.$queryRaw<{ templateId: string; sent: bigint; replied: bigint }[]>`
+      SELECT d."templateId", COUNT(*) AS sent,
+        COUNT(*) FILTER (WHERE EXISTS (
+          SELECT 1 FROM "Activity" a WHERE a."leadId" = d."leadId" AND a.type = 'EMAIL_IN'
+            AND a."occurredAt" > d."sentAt" AND a."occurredAt" < d."sentAt" + INTERVAL '14 days'
+        )) AS replied
+      FROM "EmailDraft" d
+      WHERE d.status = 'SENT' AND d."templateId" IS NOT NULL AND d."sentAt" IS NOT NULL
+      GROUP BY d."templateId"`,
   ]);
+  const stats = new Map(replyStats.map((r) => [r.templateId, { sent: Number(r.sent), replied: Number(r.replied) }]));
   // Industries for the template creator: the ones leads actually have (most common first), then the standard list.
   const industries = [...new Set([...segments.sort((a, b) => b._count._all - a._count._all).map((s) => s.segment!), ...SEGMENTS])];
   const enrollers = await db.user.findMany({ where: { id: { in: [...new Set(recent.map((r) => r.enrolledById))] } }, select: { id: true, name: true } });
 
-  const tplViews: TemplateView[] = templates.map((t) => ({ id: t.id, name: t.name, category: t.category, language: t.language, subject: t.subject, body: t.body, countries: t.countries, industries: t.industries }));
+  const tplViews: TemplateView[] = templates.map((t) => ({ id: t.id, name: t.name, category: t.category, language: t.language, subject: t.subject, body: t.body, countries: t.countries, industries: t.industries, stats: stats.get(t.id) ?? null }));
   const seqViews: SequenceView[] = sequences.map((s) => {
     const stat = (st: string) => counts.find((c) => c.sequenceId === s.id && c.status === st)?._count._all ?? 0;
     return {

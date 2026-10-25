@@ -56,6 +56,7 @@ export function EmailComposer({ leadId, defaultTo, canSend, threads, hasMailbox,
   return (
     <form ref={form} action={action} className="space-y-3">
       <input type="hidden" name="leadId" value={leadId} />
+      <input type="hidden" name="templateId" value={templateId} />
       {templates.length > 0 && (
         <div>
           {suggested.length > 0 && (

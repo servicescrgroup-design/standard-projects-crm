@@ -3,6 +3,7 @@ import { db } from "./db";
 import { mapNotionRow, planImport, type ImportedLead, type NotionCustomerRow } from "../notionImport";
 import { mapCsvRows } from "../csvImport";
 import { mapResearchRow, planResearchImport, type ResearchRow } from "../researchImport";
+import { guessIndustry } from "../industryGuess";
 
 export type ImportSummary = { read: number; importable: number; created: number; enriched: number; skipped: number };
 
@@ -36,6 +37,7 @@ async function importMapped(read: number, mapped: ImportedLead[]): Promise<Impor
     const { count } = await db.lead.createMany({
       data: plan.create.slice(i, i + 200).map((l) => ({
         ...l,
+        segment: l.segment ?? guessIndustry(l),
         createdAt: l.createdAt ?? undefined,
         stageChangedAt: l.createdAt ?? undefined,
       })),
@@ -58,7 +60,7 @@ export async function importResearchRows(rows: ResearchRow[]): Promise<ImportSum
   let created = 0;
   for (let i = 0; i < plan.create.length; i += 200) {
     const { count } = await db.lead.createMany({
-      data: plan.create.slice(i, i + 200).map((l) => ({ ...l, createdAt: undefined })),
+      data: plan.create.slice(i, i + 200).map((l) => ({ ...l, segment: l.segment ?? guessIndustry(l), createdAt: undefined })),
       skipDuplicates: true,
     });
     created += count;
