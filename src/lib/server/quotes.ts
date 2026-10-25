@@ -148,6 +148,8 @@ export async function acceptQuote(token: string, name: string) {
     db.activity.create({ data: { leadId: q.lead.id, type: "NOTE", source: "QUOTE", summary: `Quote ${q.number} accepted online by ${who}: ${formatMoney(t.oneOff)}${t.monthly ? ` + ${formatMoney(t.monthly)}/month` : ""}`, occurredAt: now } }),
     db.sequenceEnrollment.updateMany({ where: { leadId: q.lead.id, status: "ACTIVE" }, data: { status: "STOPPED", stopReason: "Quote accepted", nextRunAt: null } }),
   ]);
+  const { markDemosWon } = await import("./demos");
+  await markDemosWon(q.lead.id);
   await notify([q.lead.ownerId ?? q.createdById, ...(await managersFor(q.lead.owner?.teamId ?? null))], {
     type: "QUOTE_ACCEPTED",
     title: `🎉 ${q.lead.company} accepted quote ${q.number}`,

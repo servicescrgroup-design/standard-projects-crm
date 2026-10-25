@@ -16,6 +16,7 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { logActivity } from "@/lib/server/activities";
+import { markDemosWon } from "@/lib/server/demos";
 import { notify } from "@/lib/server/notifications";
 import { sanitizeLayout } from "@/lib/analytics";
 import { sanitizeConfig } from "@/lib/reports";
@@ -241,6 +242,7 @@ export async function updateLead(fd: FormData) {
   }
 
   await db.lead.update({ where: { id: leadId }, data });
+  if (data.stage === "WON") await markDemosWon(leadId);
   if (data.ownerId && data.ownerId !== user.id) {
     await notify(String(data.ownerId), { type: "LEAD_ASSIGNED", title: `${user.name} assigned ${lead.company} to you`, href: `/leads/${leadId}` });
   }

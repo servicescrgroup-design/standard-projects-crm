@@ -26,6 +26,8 @@ import { EmailSafetyBox } from "@/components/email/EmailSafetyBox";
 import { emailBlockReason } from "@/lib/emailSafety";
 import { localTimeLabel, timeZoneFor } from "@/lib/timezones";
 import { LeadQuotes } from "@/components/quotes/LeadQuotes";
+import { LeadDemos } from "@/components/demos/LeadDemos";
+import { loadDemoViews, requestOrigin } from "@/lib/server/demos";
 import { leadMergeContext } from "@/lib/templates";
 import { EMAIL_RESTRICTED_COUNTRIES } from "@/lib/sequences";
 import { countryOfLead } from "@/lib/countries";
@@ -65,6 +67,10 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
     db.sequenceEnrollment.findMany({ where: { leadId: lead.id }, orderBy: { updatedAt: "desc" }, include: { sequence: { select: { name: true, _count: { select: { steps: true } } } } } }),
     db.quote.findMany({ where: { leadId: lead.id }, orderBy: { createdAt: "desc" } }),
     db.mailbox.findFirst({ where: { userId: user.id, status: "ACTIVE" }, select: { address: true } }),
+  ]);
+  const [demos, team] = await Promise.all([
+    loadDemoViews({ leadId: lead.id }, await requestOrigin()),
+    db.user.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   const country = countryOfLead(lead)?.name ?? null;
   const zone = timeZoneFor(country, lead.location);
@@ -264,6 +270,8 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
               </div>
             }
           />
+
+          <LeadDemos leadId={lead.id} demos={demos} team={team} me={user.name} />
 
           <LeadQuotes leadId={lead.id} quotes={quotes} />
 

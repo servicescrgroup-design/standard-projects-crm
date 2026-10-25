@@ -37,6 +37,7 @@ model User {
   passwordHash  String? // null until the person sets a password via their invite link
   preferences   Json              @default("{}") // per-user UI settings, e.g. dashboard widget order
   createdAt     DateTime          @default(now())
+  demosAssigned DemoProject[]     @relation("DemoAssignee")
 }
 
 /**
@@ -117,6 +118,7 @@ model Lead {
   /// Proof they agreed to receive emails (needed for cold email in Germany/Austria).
   emailConsentAt    DateTime?
   emailConsentNote  String?
+  demos             DemoProject[]
 
   @@index([ownerId])
   @@index([stage])
@@ -408,4 +410,35 @@ model AppSetting {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+/**
+ * A demo built for a lead before the deal is won: the team builds a sample website, attaches the offer
+ * (a quote) and sends the client a page with both. Share page: /demo/<token>.
+ */
+model DemoProject {
+  id           String    @id @default(cuid())
+  leadId       String
+  lead         Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  name         String
+  status       String    @default("TODO") // TODO | BUILDING | READY | SENT | INTERESTED | WON | LOST
+  brief        String?
+  tasks        Json      @default("[]") // [{ text, done }]
+  assignedToId String?
+  assignedTo   User?     @relation("DemoAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdById  String
+  dueAt        DateTime?
+  demoUrl      String?
+  quoteId      String? // the offer shown with the demo
+  token        String    @unique
+  sentAt       DateTime?
+  viewedAt     DateTime?
+  viewCount    Int       @default(0)
+  interestedAt DateTime?
+  clientNote   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([leadId])
+  @@index([status])
 }
