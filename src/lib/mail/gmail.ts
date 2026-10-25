@@ -36,10 +36,11 @@ function toMessage(m: GmailMessage, mailboxAddress: string): MailMessage {
     snippet: decodeEntities(m.snippet ?? ""),
     date: new Date(Number(m.internalDate ?? Date.now())),
     webLink: gmailLink(mailboxAddress, m.threadId),
+    failedRecipients: parseAddressList(header(m, "X-Failed-Recipients")),
   };
 }
 
-const METADATA = "format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Cc&metadataHeaders=Subject&metadataHeaders=Message-ID&metadataHeaders=References";
+const METADATA = "format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Cc&metadataHeaders=Subject&metadataHeaders=Message-ID&metadataHeaders=References&metadataHeaders=X-Failed-Recipients";
 
 async function getMessage(token: string, id: string) {
   return api<GmailMessage>(`${BASE}/messages/${id}?${METADATA}`, token);

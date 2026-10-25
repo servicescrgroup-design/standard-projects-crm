@@ -5,15 +5,20 @@ import { useRouter } from "next/navigation";
 import { Repeat, Square } from "lucide-react";
 import { enrollAction, stopEnrollmentAction } from "@/app/outreachActions";
 import { enrollmentLabel } from "@/lib/sequences";
+import { localTimeLabel } from "@/lib/timezones";
 import { Select } from "@/components/ui/Select";
 import { toast } from "@/components/ui/Toaster";
 
 type Enrollment = { id: string; sequenceName: string; status: string; step: number; total: number; nextRunAt: string | null; stopReason: string | null };
 
 /** On a lead: its sequences (with Stop) and "Start a sequence". */
-export function LeadSequenceBox({ leadId, hasEmail, restrictedCountry, sequences, enrollments, canSend }: {
+export function LeadSequenceBox({ leadId, hasEmail, blockedReason = null, zone, restrictedCountry, sequences, enrollments, canSend }: {
   leadId: string;
   hasEmail: boolean;
+  /** "They asked not to be emailed" etc.: no new sequences. */
+  blockedReason?: string | null;
+  /** The lead's time zone, to show when the next email lands for them. */
+  zone?: string;
   restrictedCountry: string | null;
   sequences: { id: string; name: string }[];
   enrollments: Enrollment[];
@@ -43,7 +48,7 @@ export function LeadSequenceBox({ leadId, hasEmail, restrictedCountry, sequences
               <span className={`pill ${e.status === "REPLIED" ? "bg-emerald-50 text-emerald-700" : e.status === "ACTIVE" ? "bg-brand-50 text-brand-700" : e.status === "PENDING_APPROVAL" ? "bg-amber-50 text-amber-700" : "bg-line-soft text-ink-2"}`}>{enrollmentLabel(e.status)}</span>
               <span className="text-xs text-ink-3">
                 {Math.min(e.step, e.total)}/{e.total} sent
-                {e.status === "ACTIVE" && e.nextRunAt && ` · next ${new Date(e.nextRunAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`}
+                {e.status === "ACTIVE" && e.nextRunAt && ` · next ${new Date(e.nextRunAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}${zone ? ` (${localTimeLabel(zone, new Date(e.nextRunAt))} their time)` : ""}`}
                 {e.stopReason && e.status !== "REPLIED" && ` · ${e.stopReason}`}
               </span>
               {(e.status === "ACTIVE" || e.status === "PENDING_APPROVAL") && (
@@ -56,7 +61,9 @@ export function LeadSequenceBox({ leadId, hasEmail, restrictedCountry, sequences
         </ul>
       )}
       {!running && (
-        hasEmail ? (
+        blockedReason ? (
+          <p className="text-sm text-ink-3">{blockedReason}, so sequences can&rsquo;t be started.</p>
+        ) : hasEmail ? (
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
               <div className="min-w-56 flex-1">
@@ -69,7 +76,7 @@ export function LeadSequenceBox({ leadId, hasEmail, restrictedCountry, sequences
             {restrictedCountry && (
               <label className="flex items-start gap-2 text-xs text-amber-800">
                 <input type="checkbox" className="mt-0.5" checked={override} onChange={(e) => setOverride(e.target.checked)} />
-                This business is in {restrictedCountry}, where cold marketing email needs the business&rsquo;s consent. Tick only if they&rsquo;ve agreed to hear from you (for example after a call).
+                This business is in {restrictedCountry}, where marketing email needs the business&rsquo;s consent. Tick only if they&rsquo;ve agreed to hear from you (for example on a call). This is saved on the lead as their consent.
               </label>
             )}
             {!canSend && <p className="text-xs text-ink-3">A manager approves it before the first email goes out.</p>}

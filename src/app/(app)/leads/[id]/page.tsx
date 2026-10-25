@@ -22,6 +22,9 @@ import { QuickLogForm } from "@/components/QuickLogForm";
 import { LeadEmailPanel } from "@/components/email/LeadEmailPanel";
 import { LeadComms } from "@/components/voice/LeadComms";
 import { LeadSequenceBox } from "@/components/outreach/LeadSequenceBox";
+import { EmailSafetyBox } from "@/components/email/EmailSafetyBox";
+import { emailBlockReason } from "@/lib/emailSafety";
+import { localTimeLabel, timeZoneFor } from "@/lib/timezones";
 import { LeadQuotes } from "@/components/quotes/LeadQuotes";
 import { leadMergeContext } from "@/lib/templates";
 import { EMAIL_RESTRICTED_COUNTRIES } from "@/lib/sequences";
@@ -64,6 +67,8 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
     db.mailbox.findFirst({ where: { userId: user.id, status: "ACTIVE" }, select: { address: true } }),
   ]);
   const country = countryOfLead(lead)?.name ?? null;
+  const zone = timeZoneFor(country, lead.location);
+  const restrictedCountry = country && EMAIL_RESTRICTED_COUNTRIES.includes(country) ? country : null;
   const merge = leadMergeContext(lead, { name: user.name, email: myMailbox?.address ?? user.email });
   const assignable = candidates.filter((c) => canAssignTo(user, c));
   const canAssign = user.role !== "REP";
@@ -115,6 +120,8 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
               <h2 className="font-semibold">Prospect profile</h2>
               {lead.priority && <span className="chip bg-brand-600 text-white">Priority {lead.priority}</span>}
               {lead.segment && <span className="chip">{lead.segment}</span>}
+              {lead.emailOptOutAt && <span className="chip bg-rose-50 text-rose-700">Do not email</span>}
+              {lead.emailBouncedAt && <span className="chip bg-amber-50 text-amber-800">Email bounced</span>}
               <span className="chip bg-indigo-50 text-indigo-700">{SOURCE_LABELS[lead.source as Source] ?? lead.source}</span>
               {lead.googleRating !== null && (
                 <span className="chip">
@@ -234,14 +241,27 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
             merge={merge}
             target={{ country, industry: lead.segment ?? lead.industry }}
             sequenceBox={
+              <div className="space-y-4">
+              <EmailSafetyBox
+                leadId={lead.id}
+                optOut={lead.emailOptOutAt ? { at: lead.emailOptOutAt.toISOString(), reason: lead.emailOptOutReason } : null}
+                bounce={lead.emailBouncedAt ? { at: lead.emailBouncedAt.toISOString(), reason: lead.emailBounceReason } : null}
+                consent={lead.emailConsentAt ? { at: lead.emailConsentAt.toISOString(), reason: lead.emailConsentNote } : null}
+                restrictedCountry={restrictedCountry}
+                localNow={lead.email ? localTimeLabel(zone, new Date()) : null}
+                canUnblock={canSendEmail(user)}
+              />
               <LeadSequenceBox
                 leadId={lead.id}
                 hasEmail={!!lead.email}
-                restrictedCountry={country && EMAIL_RESTRICTED_COUNTRIES.includes(country) ? country : null}
+                blockedReason={emailBlockReason(lead)}
+                zone={zone}
+                restrictedCountry={lead.emailConsentAt ? null : restrictedCountry}
                 sequences={sequences}
                 canSend={canSendEmail(user)}
                 enrollments={enrollments.map((e) => ({ id: e.id, sequenceName: e.sequence.name, status: e.status, step: e.stepIndex, total: e.sequence._count.steps, nextRunAt: e.nextRunAt?.toISOString() ?? null, stopReason: e.stopReason }))}
               />
+              </div>
             }
           />
 

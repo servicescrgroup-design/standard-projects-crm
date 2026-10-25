@@ -108,6 +108,15 @@ model Lead {
   enrollments       SequenceEnrollment[]
   quotes            Quote[]
   assignedAt        DateTime? // when it was last handed to its owner (response-time clock for new enquiries)
+  /// Never email again (they said "no thanks", or someone marked it). Blocks sequences and manual emails.
+  emailOptOutAt     DateTime?
+  emailOptOutReason String?
+  /// Their address bounced; cleared when the email address is changed.
+  emailBouncedAt    DateTime?
+  emailBounceReason String?
+  /// Proof they agreed to receive emails (needed for cold email in Germany/Austria).
+  emailConsentAt    DateTime?
+  emailConsentNote  String?
 
   @@index([ownerId])
   @@index([stage])

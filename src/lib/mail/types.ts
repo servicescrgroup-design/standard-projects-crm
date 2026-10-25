@@ -28,6 +28,8 @@ export type MailMessage = {
   snippet: string;
   date: Date;
   webLink: string;
+  /** Bounce-backs: the addresses the server couldn't deliver to (Gmail's X-Failed-Recipients). */
+  failedRecipients?: string[];
 };
 
 export type OutgoingMail = {

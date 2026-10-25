@@ -216,6 +216,12 @@ export async function updateLead(fd: FormData) {
     monthlyValue: toMinor(str(fd, "monthlyValue")),
   };
 
+  // A new address gets a fresh start after a bounce.
+  if (data.email !== lead.email) {
+    data.emailBouncedAt = null;
+    data.emailBounceReason = null;
+  }
+
   const stage = str(fd, "stage");
   if (isStage(stage) && stage !== lead.stage) {
     data.stage = stage;

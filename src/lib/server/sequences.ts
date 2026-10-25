@@ -7,7 +7,11 @@ import { MailAuthError } from "../mail/http";
 import { leadScope, canSendEmail } from "../access";
 import { countryOfLead } from "../countries";
 import { replySubject } from "../mail/mime";
-import { EMAIL_RESTRICTED_COUNTRIES, SEQUENCE_LIMITS, nextRunAt, stopReason } from "../sequences";
+import { EMAIL_RESTRICTED_COUNTRIES, SEQUENCE_LIMITS, inSendWindow, nextRunAt, nextSendTime, spreadFor, stopReason } from "../sequences";
+import { emailBlockReason } from "../emailSafety";
+import { timeZoneFor } from "../timezones";
+import { markBounced } from "./emailFlags";
+import { undeliverableReason } from "./emailCheck";
 import { OPT_OUT_LINE, leadMergeContext, renderTemplate, templateLanguage } from "../templates";
 import { DEFAULT_TEMPLATES, DEFAULT_SEQUENCES } from "../outreachDefaults";
 import { industryTemplatePack } from "../industryTemplates";
@@ -46,11 +50,12 @@ async function createStarterTemplates(userId: string) {
   }
 }
 
-export type EnrollResult = { enrolled: number; pending: number; skippedNoEmail: number; skippedRestricted: number; skippedAlready: number; skippedHidden: number };
+export type EnrollResult = { enrolled: number; pending: number; skippedNoEmail: number; skippedBlocked: number; skippedRestricted: number; skippedAlready: number; skippedHidden: number };
 
 /**
  * Puts leads into a sequence. Owners/team leads start it straight away; reps' enrolments wait for approval.
- * Leads in Germany/Austria are skipped unless explicitly included (cold email there needs consent).
+ * Leads that opted out or bounced are skipped. Leads in Germany/Austria need recorded consent; ticking
+ * "they've agreed" (includeRestricted) records it for them.
  */
 export async function enrollLeads(user: User, sequenceId: string, leadIds: string[], includeRestricted = false): Promise<EnrollResult> {
   const sequence = await db.sequence.findUnique({ where: { id: sequenceId }, include: { steps: { orderBy: { position: "asc" } } } });
@@ -58,17 +63,25 @@ export async function enrollLeads(user: User, sequenceId: string, leadIds: strin
   const ids = [...new Set(leadIds)].slice(0, 1000);
   const leads = await db.lead.findMany({
     where: { AND: [{ id: { in: ids } }, leadScope(user)] },
-    select: { id: true, email: true, location: true, industry: true, phone: true, company: true, enrollments: { where: { sequenceId }, select: { id: true, status: true } } },
+    select: {
+      id: true, email: true, location: true, industry: true, phone: true, company: true, emailOptOutAt: true, emailBouncedAt: true, emailConsentAt: true,
+      enrollments: { where: { sequenceId }, select: { id: true, status: true } },
+    },
   });
-  const r: EnrollResult = { enrolled: 0, pending: 0, skippedNoEmail: 0, skippedRestricted: 0, skippedAlready: 0, skippedHidden: ids.length - leads.length };
+  const r: EnrollResult = { enrolled: 0, pending: 0, skippedNoEmail: 0, skippedBlocked: 0, skippedRestricted: 0, skippedAlready: 0, skippedHidden: ids.length - leads.length };
+  const consentGiven: string[] = [];
   const direct = canSendEmail(user);
   const now = new Date();
   const firstRun = nextRunAt(now, sequence.steps[0].waitDays, now);
 
   for (const l of leads) {
     if (!l.email) { r.skippedNoEmail++; continue; }
+    if (emailBlockReason(l)) { r.skippedBlocked++; continue; }
     const country = countryOfLead(l)?.name ?? null;
-    if (!includeRestricted && country && EMAIL_RESTRICTED_COUNTRIES.includes(country)) { r.skippedRestricted++; continue; }
+    if (country && EMAIL_RESTRICTED_COUNTRIES.includes(country) && !l.emailConsentAt) {
+      if (!includeRestricted) { r.skippedRestricted++; continue; }
+      consentGiven.push(l.id);
+    }
     const existing = l.enrollments[0];
     if (existing && (existing.status === "ACTIVE" || existing.status === "PENDING_APPROVAL")) { r.skippedAlready++; continue; }
     const data = {
@@ -85,6 +98,12 @@ export async function enrollLeads(user: User, sequenceId: string, leadIds: strin
     else await db.sequenceEnrollment.create({ data: { ...data, sequenceId, leadId: l.id } });
     if (direct) r.enrolled++;
     else r.pending++;
+  }
+  if (consentGiven.length) {
+    await db.lead.updateMany({
+      where: { id: { in: consentGiven }, emailConsentAt: null },
+      data: { emailConsentAt: now, emailConsentNote: `${user.name} confirmed they agreed, when starting “${sequence.name}”` },
+    });
   }
   if (r.pending > 0) {
     await notify(await managersFor(user.teamId), {
@@ -137,20 +156,26 @@ export async function stopSequencesOnReply(leadId: string, company: string) {
   }
 }
 
-export type RunResult = { sent: number; stopped: number; waiting: number; failed: number };
+/** later = held until the lead's working hours. */
+export type RunResult = { sent: number; stopped: number; waiting: number; later: number; failed: number };
 
 /** Sends every sequence email that's due, within per-mailbox limits. Safe to run every few minutes. */
 export async function runDueSequences(budgetMs = 30_000): Promise<RunResult> {
   const started = Date.now();
   const now = new Date();
-  const r: RunResult = { sent: 0, stopped: 0, waiting: 0, failed: 0 };
+  const r: RunResult = { sent: 0, stopped: 0, waiting: 0, later: 0, failed: 0 };
   const due = await db.sequenceEnrollment.findMany({
     where: { status: "ACTIVE", nextRunAt: { lte: now } },
     orderBy: { nextRunAt: "asc" },
     take: 300,
     include: {
       sequence: { include: { steps: { orderBy: { position: "asc" }, include: { template: true } } } },
-      lead: { select: { id: true, company: true, contactName: true, email: true, stage: true, lastReplyAt: true, location: true, website: true, industry: true, segment: true, whyFit: true, serviceInterest: true, phone: true } },
+      lead: {
+        select: {
+          id: true, company: true, contactName: true, email: true, stage: true, lastReplyAt: true, location: true, website: true, industry: true, segment: true,
+          whyFit: true, serviceInterest: true, phone: true, emailOptOutAt: true, emailBouncedAt: true,
+        },
+      },
     },
   });
   const sentThisRun = new Map<string, number>();
@@ -168,6 +193,28 @@ export async function runDueSequences(budgetMs = 30_000): Promise<RunResult> {
       if (stop.status === "FAILED") r.failed++;
       else r.stopped++;
       continue;
+    }
+    const blocked = emailBlockReason(e.lead);
+    if (blocked) {
+      await db.sequenceEnrollment.update({ where: { id: e.id }, data: { status: e.lead.emailBouncedAt ? "FAILED" : "STOPPED", stopReason: blocked, nextRunAt: null } });
+      r.stopped++;
+      continue;
+    }
+    // Only during the lead's working hours (weekdays 9:00–16:00 their time); otherwise wait for the next opening.
+    const zone = timeZoneFor(country, e.lead.location);
+    if (!inSendWindow(zone, now)) {
+      await db.sequenceEnrollment.update({ where: { id: e.id }, data: { nextRunAt: nextSendTime(zone, now, spreadFor(e.id)) } });
+      r.later++;
+      continue;
+    }
+    // Before the first email: make sure the address can receive mail at all (a bounce hurts the mailbox's reputation).
+    if (e.stepIndex === 0) {
+      const bad = await undeliverableReason(e.lead.email);
+      if (bad) {
+        await markBounced(e.leadId, bad);
+        r.failed++;
+        continue;
+      }
     }
 
     const author = await db.user.findUnique({ where: { id: e.enrolledById } });

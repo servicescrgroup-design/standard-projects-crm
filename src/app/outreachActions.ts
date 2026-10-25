@@ -84,7 +84,8 @@ export async function enrollAction(sequenceId: string, leadIds: string[], includ
       r.enrolled && `${r.enrolled} started`,
       r.pending && `${r.pending} sent for approval`,
       r.skippedNoEmail && `${r.skippedNoEmail} skipped (no email)`,
-      r.skippedRestricted && `${r.skippedRestricted} skipped (Germany/Austria: call first)`,
+      r.skippedBlocked && `${r.skippedBlocked} skipped (do not email or bounced)`,
+      r.skippedRestricted && `${r.skippedRestricted} skipped (Germany/Austria: no recorded consent)`,
       r.skippedAlready && `${r.skippedAlready} already in it`,
     ].filter(Boolean);
     revalidatePath("/outreach");
@@ -124,7 +125,7 @@ export async function runSequencesNow(): Promise<ActionResult> {
   if (!canManagePeople(user)) return { error: "Only the owner can do this" };
   const r = await runDueSequences(40_000);
   revalidatePath("/outreach");
-  return { ok: true, message: `${r.sent} sent · ${r.stopped} finished or stopped · ${r.waiting} waiting · ${r.failed} failed` };
+  return { ok: true, message: `${r.sent} sent · ${r.later} held for their working hours · ${r.stopped} finished or stopped · ${r.waiting} waiting · ${r.failed} failed` };
 }
 
 // ---------- Quotes ----------

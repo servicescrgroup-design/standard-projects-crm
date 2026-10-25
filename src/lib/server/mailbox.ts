@@ -3,6 +3,8 @@ import type { Mailbox } from "@prisma/client";
 import { db } from "./db";
 import { decryptSecret, encryptSecret } from "./crypto";
 import { leadForAddresses, loadMatchContext, logActivity, type MatchContext } from "./activities";
+import { markBounced, markOptOut } from "./emailFlags";
+import { bounceInfo, emailBlockReason, isOptOutReply, replyLead } from "../emailSafety";
 import { PROVIDERS, refreshAccess } from "../mail/oauth";
 import { MailAuthError } from "../mail/http";
 import { replySubject } from "../mail/mime";
@@ -54,6 +56,13 @@ async function markError(mb: Mailbox, e: unknown) {
 /** Logs one message on its lead (if any). Returns "logged" | "duplicate" | "unmatched". */
 async function logMessage(ctx: MatchContext, mb: Mailbox, m: MailMessage) {
   const provider = mb.provider as MailProviderId;
+  // A bounce-back: flag the lead whose address failed and stop emailing it.
+  const bounce = m.direction === "in" ? bounceInfo(m, mb.address) : null;
+  if (bounce) {
+    const hits = ctx.leads.filter((l) => l.email && bounce.addresses.includes(l.email.toLowerCase()));
+    for (const l of hits) await markBounced(l.id, bounce.reason);
+    return hits.length ? ("bounce" as const) : ("unmatched" as const);
+  }
   const addresses = m.direction === "in" ? [m.from] : [...m.to, ...m.cc];
   const lead = leadForAddresses(ctx, addresses);
   if (!lead) return "unmatched" as const;
@@ -72,20 +81,25 @@ async function logMessage(ctx: MatchContext, mb: Mailbox, m: MailMessage) {
   });
   // A reply stops any sequence for this lead straight away and alerts whoever started it.
   if (logged && m.direction === "in") {
-    const { stopSequencesOnReply } = await import("./sequences");
-    await stopSequencesOnReply(lead.id, m.from);
+    if (isOptOutReply(m.snippet, m.subject)) {
+      // "No thanks": never email them again (this also stops their sequences).
+      await markOptOut(lead.id, `Replied: “${replyLead(m.snippet).slice(0, 120)}”`);
+    } else {
+      const { stopSequencesOnReply } = await import("./sequences");
+      await stopSequencesOnReply(lead.id, m.from);
+    }
   }
   return logged ? ("logged" as const) : ("duplicate" as const);
 }
 
-export type SyncResult = { mailboxes: number; logged: number; unmatched: number; errors: number };
+export type SyncResult = { mailboxes: number; logged: number; unmatched: number; bounces: number; errors: number };
 
 /**
  * Pulls new mail from one mailbox and logs what belongs to a lead. Only matched messages are stored;
  * everything else is ignored. Safe to re-run (messages are de-duplicated by provider id).
  */
 export async function syncMailbox(mb: Mailbox, ctx?: MatchContext): Promise<SyncResult> {
-  const result: SyncResult = { mailboxes: 1, logged: 0, unmatched: 0, errors: 0 };
+  const result: SyncResult = { mailboxes: 1, logged: 0, unmatched: 0, bounces: 0, errors: 0 };
   if (!isMailProvider(mb.provider)) return result;
   try {
     const token = await accessTokenFor(mb);
@@ -100,6 +114,7 @@ export async function syncMailbox(mb: Mailbox, ctx?: MatchContext): Promise<Sync
       const r = await logMessage(context, mb, m);
       if (r === "logged") result.logged++;
       if (r === "unmatched") result.unmatched++;
+      if (r === "bounce") result.bounces++;
     }
     await db.mailbox.update({ where: { id: mb.id }, data: { cursor, lastSyncAt: new Date(), lastError: null, status: "ACTIVE" } });
   } catch (e) {
@@ -112,7 +127,7 @@ export async function syncMailbox(mb: Mailbox, ctx?: MatchContext): Promise<Sync
 /** Syncs every connected mailbox, least recently synced first, within a time budget. */
 export async function syncAllMailboxes(budgetMs = 45_000): Promise<SyncResult> {
   const started = Date.now();
-  const total: SyncResult = { mailboxes: 0, logged: 0, unmatched: 0, errors: 0 };
+  const total: SyncResult = { mailboxes: 0, logged: 0, unmatched: 0, bounces: 0, errors: 0 };
   const mailboxes = await db.mailbox.findMany({ where: { status: "ACTIVE" }, orderBy: { lastSyncAt: { sort: "asc", nulls: "first" } } });
   if (mailboxes.length === 0) return total;
   const ctx = await loadMatchContext();
@@ -122,6 +137,7 @@ export async function syncAllMailboxes(budgetMs = 45_000): Promise<SyncResult> {
     total.mailboxes++;
     total.logged += r.logged;
     total.unmatched += r.unmatched;
+    total.bounces += r.bounces;
     total.errors += r.errors;
   }
   return total;
@@ -144,6 +160,13 @@ export async function sendingMailbox(authorId: string, actorId: string): Promise
 export async function sendDraft(draftId: string, actorId: string) {
   const draft = await db.emailDraft.findUniqueOrThrow({ where: { id: draftId }, include: { author: true } });
   if (draft.status === "SENT") throw new Error("This email was already sent");
+  // Never email someone who opted out, or an address that bounced (sequences and manual emails alike).
+  const lead = await db.lead.findUnique({ where: { id: draft.leadId }, select: { email: true, emailOptOutAt: true, emailBouncedAt: true } });
+  const recipients = draft.to.toLowerCase().split(",").map((s) => s.trim());
+  if (lead?.emailOptOutAt) throw new Error("This lead asked not to be emailed. Remove the “Do not email” mark on the lead first if they've changed their mind.");
+  if (lead?.emailBouncedAt && lead.email && recipients.includes(lead.email.toLowerCase())) {
+    throw new Error(`${emailBlockReason(lead)}. Update the lead's email address first.`);
+  }
   const mb = await sendingMailbox(draft.authorId, actorId);
   if (!mb || !isMailProvider(mb.provider)) throw new Error("Connect Gmail or Outlook in Settings → Email before sending");
 
