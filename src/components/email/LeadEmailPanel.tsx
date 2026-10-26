@@ -1,8 +1,9 @@
-import { ExternalLink, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
+import { EmailThreads } from "./EmailThreads";
 import { DraftButtons, EmailComposer, type LeadTarget, type TemplateOption, type ThreadOption } from "./EmailComposer";
 import type { MergeContext } from "@/lib/templates";
 
-type EmailActivity = { id: string; type: string; subject: string | null; summary: string | null; threadId: string | null; webLink: string | null; source: string; occurredAt: Date };
+type EmailActivity = { id: string; type: string; subject: string | null; summary: string | null; threadId: string | null; webLink: string | null; source: string; occurredAt: Date; user?: { name: string } | null };
 type Draft = { id: string; to: string; subject: string; body: string; status: string; error: string | null; author: { name: string }; updatedAt: Date };
 
 const day = (d: Date | null) => (d ? d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Never");
@@ -10,22 +11,22 @@ const STATUS: Record<string, string> = { DRAFT: "Draft", AWAITING_APPROVAL: "Dra
 
 /** Every email thread with this lead, last contacted / replied dates, drafts awaiting approval and the composer. */
 export function LeadEmailPanel({
-  leadId, leadEmail, lastContactAt, lastReplyAt, emails, drafts, canSend, hasMailbox, templates = [], merge = {}, target, sequenceBox,
+  leadId, leadEmail, lastContactAt, lastReplyAt, emails, drafts, canSend, canSendNow = canSend, hasMailbox, templates = [], merge = {}, target, sequenceBox,
 }: {
   leadId: string; leadEmail: string | null; lastContactAt: Date | null; lastReplyAt: Date | null;
-  emails: EmailActivity[]; drafts: Draft[]; canSend: boolean; hasMailbox: boolean;
+  emails: EmailActivity[]; drafts: Draft[]; canSend: boolean; canSendNow?: boolean; hasMailbox: boolean;
   templates?: TemplateOption[]; merge?: MergeContext; target?: LeadTarget; sequenceBox?: React.ReactNode;
 }) {
   // Group synced/sent emails into threads, newest thread first.
   const threads = new Map<string, EmailActivity[]>();
   for (const e of emails) {
-    if (!e.threadId) continue;
-    threads.set(e.threadId, [...(threads.get(e.threadId) ?? []), e]);
+    const key = e.threadId ?? `single:${e.id}`; // hand-logged emails have no thread
+    threads.set(key, [...(threads.get(key) ?? []), e]);
   }
   const list = [...threads.values()]
     .map((msgs) => msgs.sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime()))
     .sort((a, b) => b[0].occurredAt.getTime() - a[0].occurredAt.getTime());
-  const options: ThreadOption[] = list.map((m) => ({ activityId: m[0].id, subject: m.find((x) => x.subject)?.subject ?? "" }));
+  const options: ThreadOption[] = list.filter((m) => m[0].threadId).map((m) => ({ activityId: m[0].id, subject: m.find((x) => x.subject)?.subject ?? "" }));
 
   return (
     <section id="email" className="card scroll-mt-24">
@@ -37,35 +38,11 @@ export function LeadEmailPanel({
         </div>
       </div>
 
-      {list.length > 0 && (
-        <ul className="divide-y divide-line-soft">
-          {list.map((msgs) => {
-            const latest = msgs[0];
-            const replied = msgs.some((m) => m.type === "EMAIL_IN");
-            return (
-              <li key={latest.threadId} className="flex gap-3 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="truncate font-medium">{msgs.find((m) => m.subject)?.subject || "(no subject)"}</span>
-                    <span className="chip">{msgs.length} message{msgs.length === 1 ? "" : "s"}</span>
-                    {replied && <span className="chip bg-emerald-50 text-emerald-700">Replied</span>}
-                  </div>
-                  {latest.summary && <p className="mt-0.5 line-clamp-2 text-sm text-ink-2">{latest.type === "EMAIL_IN" ? "They wrote: " : "You wrote: "}{latest.summary}</p>}
-                </div>
-                <div className="shrink-0 text-right text-xs text-ink-3">
-                  <div>{latest.occurredAt.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div>
-                  {latest.webLink && (
-                    <a href={latest.webLink} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-brand-700 hover:underline">
-                      Open in {latest.source === "OUTLOOK" ? "Outlook" : "Gmail"} <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      {list.length === 0 && <p className="px-4 py-3 text-sm text-ink-3">No email threads yet. Emails with this lead appear here once a mailbox is connected.</p>}
+      <EmailThreads
+        threads={list.map((msgs) =>
+          [...msgs].reverse().map((m) => ({ id: m.id, type: m.type, subject: m.subject, summary: m.summary, webLink: m.webLink, source: m.source, at: m.occurredAt.toISOString(), by: m.user?.name ?? null })),
+        )}
+      />
 
       {drafts.length > 0 && (
         <div className="border-t border-line-soft">
@@ -91,7 +68,7 @@ export function LeadEmailPanel({
 
       <div className="border-t border-line-soft p-4">
         <h3 className="mb-3 text-sm font-semibold">Send email</h3>
-        <EmailComposer leadId={leadId} defaultTo={leadEmail ?? ""} canSend={canSend} threads={options} hasMailbox={hasMailbox} templates={templates} merge={merge} target={target} />
+        <EmailComposer leadId={leadId} defaultTo={leadEmail ?? ""} canSend={canSendNow} threads={options} hasMailbox={hasMailbox} templates={templates} merge={merge} target={target} />
       </div>
     </section>
   );

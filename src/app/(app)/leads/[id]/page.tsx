@@ -27,6 +27,8 @@ import { emailBlockReason } from "@/lib/emailSafety";
 import { localTimeLabel, timeZoneFor } from "@/lib/timezones";
 import { LeadQuotes } from "@/components/quotes/LeadQuotes";
 import { LeadDemos } from "@/components/demos/LeadDemos";
+import { QuickEmail } from "@/components/email/QuickEmail";
+import { canSendNow } from "@/lib/server/emailPolicy";
 import { visibleActivityWhere } from "@/lib/server/activityPrivacy";
 import { loadDemoViews, requestOrigin } from "@/lib/server/demos";
 import { leadMergeContext } from "@/lib/templates";
@@ -69,6 +71,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
     db.quote.findMany({ where: { leadId: lead.id }, orderBy: { createdAt: "desc" } }),
     db.mailbox.findFirst({ where: { userId: user.id, status: "ACTIVE" }, select: { address: true } }),
   ]);
+  const sendNow = await canSendNow(user);
   const [demos, team] = await Promise.all([
     loadDemoViews({ leadId: lead.id }, await requestOrigin()),
     db.user.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -98,11 +101,17 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
             hasTwilio={twilioConnected > 0}
             autoOpen={sp.call ? "call" : sp.meeting ? "meeting" : null}
           />
-          {lead.email && (
-            <a className="btn-ghost" href="#email">
-              Email
-            </a>
-          )}
+          <QuickEmail
+            leadId={lead.id}
+            leadEmail={lead.email}
+            company={lead.company}
+            templates={templates}
+            merge={merge}
+            target={{ country, industry: lead.segment ?? lead.industry }}
+            canSendNow={sendNow}
+            hasMailbox={myMailboxes > 0}
+            blocked={emailBlockReason(lead)}
+          />
         </div>
       </div>
 
@@ -243,6 +252,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
             emails={lead.activities.filter((a) => a.type === "EMAIL_IN" || a.type === "EMAIL_OUT")}
             drafts={drafts}
             canSend={canSendEmail(user)}
+            canSendNow={sendNow}
             hasMailbox={myMailboxes > 0}
             templates={templates}
             merge={merge}

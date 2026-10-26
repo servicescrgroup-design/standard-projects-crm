@@ -9,6 +9,8 @@ import { isProviderConfigured } from "@/lib/mail/oauth";
 import { TwilioSettings } from "@/components/voice/TwilioSettings";
 import { PriceList } from "@/components/settings/PriceList";
 import { FillIndustries } from "@/components/settings/FillIndustries";
+import { AgentsSendToggle } from "@/components/email/AgentsSendToggle";
+import { agentsSendDirect } from "@/lib/server/emailPolicy";
 import { missingIndustryPlan } from "@/lib/server/industries";
 import { AssignmentSettings } from "@/components/settings/AssignmentSettings";
 import { getAssignment } from "@/lib/server/assignment";
@@ -45,6 +47,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         configured={{ GMAIL: isProviderConfigured("GMAIL"), OUTLOOK: isProviderConfigured("OUTLOOK") }}
         mailboxes={mailboxes.map((m) => ({ ...m, lastSyncAt: m.lastSyncAt?.toISOString() ?? null }))}
       />
+      {isOwner && <AgentsSendToggle initial={await agentsSendDirect()} />}
     </section>
   );
   if (!isOwner) {

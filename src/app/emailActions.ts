@@ -5,6 +5,7 @@ import { db } from "@/lib/server/db";
 import { requireUser } from "@/lib/server/session";
 import { decryptSecret } from "@/lib/server/crypto";
 import { sendDraft, syncMailbox } from "@/lib/server/mailbox";
+import { canSendNow, setAgentsSendDirect } from "@/lib/server/emailPolicy";
 import { canSeeLead, canSendEmail } from "@/lib/access";
 import { parseAddressList } from "@/lib/mail/mime";
 import { isMailProvider, PROVIDER_NAMES } from "@/lib/mail/types";
@@ -86,7 +87,7 @@ export async function saveEmailDraft(_prev: EmailResult, fd: FormData): Promise<
   if (!body) return fail("Write a message");
   if (body.length > 20_000) return fail("Message is too long");
   if (!subject && !replyTo) return fail("Add a subject");
-  if (intent === "send" && !canSendEmail(user)) intent = "approval";
+  if (intent === "send" && !(await canSendNow(user))) intent = "approval";
   if (replyTo) {
     const original = await db.activity.findUnique({ where: { id: replyTo }, select: { leadId: true } });
     if (original?.leadId !== lead.id) return fail("That email isn't on this lead");
@@ -142,4 +143,13 @@ export async function deleteDraft(draftId: string): Promise<EmailResult> {
   await db.emailDraft.delete({ where: { id: draft.id } });
   refresh(draft.leadId);
   return { ok: true, message: "Draft deleted" };
+}
+
+/** Owner: let agents send one-off emails from their own mailbox without approval. */
+export async function setAgentsSendDirectAction(on: boolean): Promise<EmailResult> {
+  const user = await requireUser();
+  if (user.role !== "OWNER") return fail("Only the owner can change this");
+  await setAgentsSendDirect(on);
+  revalidatePath("/settings");
+  return { ok: true, message: on ? "Agents can now send from their own mailbox without approval" : "Agents' emails now wait for approval" };
 }
