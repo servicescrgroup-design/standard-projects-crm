@@ -68,3 +68,34 @@ describe("Spanish, Italian and French sequences", () => {
     }
   });
 });
+
+describe("more industry guesses", () => {
+  it.each([
+    ["Smithereen Pest Management Services", "bed bug exterminators | USA Chicago", "Trades"],
+    ["Super Towing Greenacre", "towing services | Australia Sydney", "Trades"],
+    ["Allied Foundation Repair", "foundation repair | USA Houston", "Trades"],
+    ["Express Tires and Auto Services", "oil change services | USA Seattle", "Trades"],
+    ["Stream Auto Outlet", "car dealerships | USA New York", "Retail"],
+    ["Cha-Yan-Kai (Santitham Branch)", "Multi-location operators", "Multi-location"],
+    ["Ink Studio", "tattoo shops | UK Leeds", "Spa"],
+    ["Happy Paws", "pet shops | USA Austin", "Retail"],
+  ])("%s → %s", (company, industry, expected) => {
+    expect(guessIndustry({ company, industry })).toBe(expected);
+  });
+});
+
+describe("industry guesses from the company name", () => {
+  it.each([
+    ["Roastniyom Coffee", "0896367056", "Restaurant"],
+    ["Malee Sukhothai Tom Yum Noodles", "065 887 4575", "Restaurant"],
+    ["GOGYM Chiangmai", "0988209099", "Gym"],
+    ["Monde Eyewear (Chiang Mai stores)", "Multi-location operators", "Multi-location"],
+    ["Nostalgia Vintage", "0613548819", "Consignment"],
+    ["Designer Consigner", "| USA Wilmington area", "Consignment"],
+    ["Egan Drilling", "| Australia Perth", "Trades"],
+    ["Clear Step Podiatry", "podiatrists | New Zealand Auckland", "Clinic"],
+    ["Big Black Box Wet Mill", "Export & trading", "Export-Trading"],
+  ])("%s → %s", (company, industry, expected) => {
+    expect(guessIndustry({ company, industry })).toBe(expected);
+  });
+});
