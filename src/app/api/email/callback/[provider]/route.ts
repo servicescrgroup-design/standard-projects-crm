@@ -6,6 +6,7 @@ import { encryptSecret, readSignedPayload } from "@/lib/server/crypto";
 import { OAUTH_COOKIE, appOrigin, redirectUriFor } from "@/lib/server/appUrl";
 import { PROVIDERS, exchangeCode } from "@/lib/mail/oauth";
 import { providerFromSlug, type MailProviderId } from "@/lib/mail/types";
+import { logConnect } from "@/lib/server/connectLog";
 
 export const dynamic = "force-dynamic";
 
@@ -24,18 +25,37 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
   const provider = providerFromSlug((await params).provider);
   const saved = readSignedPayload<OAuthState>((await cookies()).get(OAUTH_COOKIE)?.value);
   const user = await getCurrentUser();
-  if (!user) return NextResponse.redirect(`${origin}/login`);
-  if (url.searchParams.get("error")) return back("cancelled");
+  const who = { userId: user?.id ?? null, email: user?.email ?? null, provider, origin };
+  if (!user) {
+    await logConnect({ step: "callback", outcome: "not-signed-in", ...who });
+    return NextResponse.redirect(`${origin}/login`);
+  }
+  const providerError = url.searchParams.get("error");
+  if (providerError) {
+    await logConnect({ step: "callback", outcome: "cancelled", ...who, detail: `provider error: ${providerError} ${url.searchParams.get("error_description") ?? ""}` });
+    return back("cancelled");
+  }
   const code = url.searchParams.get("code");
-  if (!provider || !saved || !code || saved.provider !== provider || saved.userId !== user.id || saved.exp < Date.now() || saved.state !== url.searchParams.get("state")) {
+  const why = !provider ? "unknown provider" : !saved ? "no sign-in cookie (different browser/window or address, or blocked cookies)" : !code ? "no code returned"
+    : saved.provider !== provider ? "provider mismatch" : saved.userId !== user.id ? `started as another user (${saved.userId})` : saved.exp < Date.now() ? "took longer than 10 minutes"
+    : saved.state !== url.searchParams.get("state") ? "state mismatch" : null;
+  if (why) {
+    await logConnect({ step: "callback", outcome: "expired", ...who, detail: why });
     return back("expired");
   }
+  if (!provider || !saved || !code) return back("expired"); // covered above; narrows the types
 
   try {
     const tokens = await exchangeCode(provider, code, redirectUriFor(origin, provider), saved.verifier);
-    if (!tokens.refreshToken) return back("no-offline-access");
+    if (!tokens.refreshToken) {
+      await logConnect({ step: "callback", outcome: "no-offline-access", ...who });
+      return back("no-offline-access");
+    }
     const { address, cursor } = await PROVIDERS[provider].profile(tokens.accessToken);
-    if (!address) return back("failed");
+    if (!address) {
+      await logConnect({ step: "callback", outcome: "failed", ...who, detail: "no address in profile" });
+      return back("failed");
+    }
     const data = {
       address,
       refreshToken: encryptSecret(tokens.refreshToken),
@@ -51,8 +71,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
       create: { userId: user.id, provider, ...data },
       update: data,
     });
+    await logConnect({ step: "callback", outcome: "connected", ...who, detail: address });
     return back(`connected-${provider.toLowerCase()}`);
-  } catch {
+  } catch (e) {
+    await logConnect({ step: "callback", outcome: "failed", ...who, detail: (e as Error).message });
     return back("failed");
   }
 }
