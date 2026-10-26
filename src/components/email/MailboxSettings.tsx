@@ -17,6 +17,7 @@ const STATUS: Record<string, [string, "ok" | "error"]> = {
   expired: ["That sign-in link expired. Please try again.", "error"],
   "no-offline-access": ["The provider didn't grant ongoing access. Please try again and accept all permissions.", "error"],
   "not-configured": ["This provider isn't set up yet. The owner needs to add its app keys in Vercel.", "error"],
+  "use-live-site": ["Mailboxes can only be connected on the live site: standard-projects-crm.vercel.app → Settings → Email. This is a preview copy.", "error"],
   failed: ["Couldn't connect the mailbox. Please try again.", "error"],
 };
 

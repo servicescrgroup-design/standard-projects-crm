@@ -15,6 +15,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
   const provider = providerFromSlug((await params).provider);
   if (!provider) return NextResponse.redirect(`${origin}/settings?email=unknown#email`);
   if (!isProviderConfigured(provider)) return NextResponse.redirect(`${origin}/settings?email=not-configured#email`);
+  // Google/Microsoft only send people back to the live address that's registered with them; on a preview
+  // deployment they'd stop at a "redirect_uri_mismatch" error page and nothing would be saved.
+  const live = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (process.env.VERCEL_ENV === "preview" && live && !process.env.APP_URL) {
+    return NextResponse.redirect(`${origin}/settings?email=use-live-site#email`);
+  }
 
   const { verifier, challenge, state } = newPkce();
   const res = NextResponse.redirect(authorizeUrl(provider, redirectUriFor(origin, provider), state, challenge, user.email));
