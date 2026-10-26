@@ -27,6 +27,7 @@ import { emailBlockReason } from "@/lib/emailSafety";
 import { localTimeLabel, timeZoneFor } from "@/lib/timezones";
 import { LeadQuotes } from "@/components/quotes/LeadQuotes";
 import { LeadDemos } from "@/components/demos/LeadDemos";
+import { visibleActivityWhere } from "@/lib/server/activityPrivacy";
 import { loadDemoViews, requestOrigin } from "@/lib/server/demos";
 import { leadMergeContext } from "@/lib/templates";
 import { EMAIL_RESTRICTED_COUNTRIES } from "@/lib/sequences";
@@ -53,7 +54,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
   const sp = await searchParams;
   const lead = await db.lead.findUnique({
     where: { id },
-    include: { owner: true, activities: { include: { user: true }, orderBy: { occurredAt: "desc" } } },
+    include: { owner: true, activities: { where: await visibleActivityWhere(user), include: { user: true }, orderBy: { occurredAt: "desc" } } },
   });
   if (!lead || !canSeeLead(user, lead)) notFound();
 

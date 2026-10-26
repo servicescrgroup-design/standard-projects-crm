@@ -20,8 +20,39 @@ const FREE_MAIL = new Set([
   "proton.me",
 ]);
 
+// Providers with a domain per country (hotmail.co.th, yahoo.de, gmx.at, …).
+const FREE_MAIL_FAMILIES = ["hotmail", "outlook", "live", "msn", "yahoo", "ymail", "gmx", "yandex", "aol", "icloud", "proton", "zoho", "fastmail", "tutanota"];
+
+// More single-domain providers common in our markets (US, UK, EU, Australia, Thailand, Asia).
+const MORE_FREE_MAIL = [
+  "mail.com", "mac.com", "rocketmail.com", "comcast.net", "verizon.net", "att.net", "sbcglobal.net", "cox.net", "charter.net", "earthlink.net", "juno.com",
+  "shaw.ca", "rogers.com", "sympatico.ca", "bigpond.com", "bigpond.net.au", "optusnet.com.au", "iinet.net.au", "xtra.co.nz", "eircom.net",
+  "ntlworld.com", "blueyonder.co.uk", "web.de", "t-online.de", "freenet.de", "arcor.de", "posteo.de", "bluewin.ch", "orange.fr", "free.fr",
+  "laposte.net", "wanadoo.fr", "sfr.fr", "libero.it", "virgilio.it", "tiscali.it", "alice.it", "telefonica.net", "terra.com", "qq.com",
+  "163.com", "126.com", "naver.com", "daum.net", "hanmail.net", "hey.com", "pm.me", "tuta.io", "duck.com",
+];
+for (const d of MORE_FREE_MAIL) FREE_MAIL.add(d);
+
 export function isFreeMail(domain: string): boolean {
-  return FREE_MAIL.has(domain.toLowerCase());
+  const d = domain.toLowerCase();
+  return FREE_MAIL.has(d) || FREE_MAIL_FAMILIES.includes(d.split(".")[0]);
+}
+
+/**
+ * Big platforms: a lead's "website" is often just its Google, Facebook or booking page, and these companies
+ * send everyone notification emails. A shared domain here never identifies a lead.
+ */
+const PLATFORM = [
+  "google", "goo.gl", "g.page", "youtube.com", "facebook.com", "fb.com", "fb.me", "messenger.com", "instagram.com", "threads.net", "whatsapp.com", "wa.me",
+  "line.me", "lin.ee", "linktr.ee", "linkedin.com", "twitter.com", "x.com", "tiktok.com", "pinterest.com", "tripadvisor", "yelp", "booking.com", "agoda.com",
+  "airbnb", "expedia", "hotels.com", "trip.com", "wongnai.com", "grab.com", "foodpanda", "lineman", "shopee", "lazada", "amazon", "apple.com", "microsoft.com",
+  "yellowpages", "restaurantji.com", "bit.ly", "business.site", "wixsite.com", "squarespace.com", "notion.so", "canva.site",
+];
+
+export function isPlatformDomain(domain: string | null): boolean {
+  if (!domain) return false;
+  const d = domain.toLowerCase();
+  return PLATFORM.some((p) => (p.includes(".") ? d === p || d.endsWith(`.${p}`) : d.split(".").includes(p)));
 }
 
 export type MatchableLead = { id: string; email: string | null; website: string | null };
@@ -70,10 +101,11 @@ export function matchLead(
 
   for (const addr of external) {
     const domain = emailDomain(addr);
-    if (FREE_MAIL.has(domain)) continue;
+    if (isFreeMail(domain) || isPlatformDomain(domain)) continue;
     const hits = leads.filter((l) => {
       const leadEmailDomain = l.email ? emailDomain(normaliseEmail(l.email) ?? "") : null;
-      return leadEmailDomain === domain || websiteDomain(l.website) === domain;
+      const site = websiteDomain(l.website);
+      return leadEmailDomain === domain || (site === domain && !isPlatformDomain(site));
     });
     if (hits.length === 1) return hits[0];
   }

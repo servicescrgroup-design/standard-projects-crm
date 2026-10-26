@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { db } from "./db";
+import { visibleActivityWhere } from "./activityPrivacy";
 import { leadScope, type Viewer } from "../access";
 import { countryOfLead } from "../countries";
 import { localTimeLabel, timeZoneFor } from "../timezones";
@@ -13,6 +14,7 @@ export async function callQueue(user: Viewer, mode: CallMode) {
   const now = new Date();
   const endOfToday = new Date(now);
   endOfToday.setHours(23, 59, 59, 999);
+  const privacy = await visibleActivityWhere(user);
   const who: Prisma.LeadWhereInput = mode === "unassigned" && user.role !== "REP" ? { ownerId: null } : { ownerId: user.id };
   const rows = await db.lead.findMany({
     where: {
@@ -28,7 +30,7 @@ export async function callQueue(user: Viewer, mode: CallMode) {
     select: {
       id: true, company: true, contactName: true, phone: true, email: true, location: true, industry: true, segment: true, priority: true,
       whyFit: true, notes: true, stage: true, lastContactAt: true, nextFollowUpAt: true, website: true,
-      activities: { orderBy: { occurredAt: "desc" }, take: 1, select: { type: true, outcome: true, summary: true, occurredAt: true } },
+      activities: { where: privacy, orderBy: { occurredAt: "desc" }, take: 1, select: { type: true, outcome: true, summary: true, occurredAt: true } },
     },
     take: 600,
   });

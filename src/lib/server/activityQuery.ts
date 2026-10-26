@@ -1,12 +1,15 @@
 import "server-only";
 import { db } from "./db";
 import { leadScope, type Viewer } from "../access";
+import { visibleActivityWhere } from "./activityPrivacy";
 
 /** Activities of the given types on leads this viewer can see, newest first, with optional search. */
-export function scopedActivities(user: Viewer, types: string[], q?: string, take = 100) {
+export async function scopedActivities(user: Viewer, types: string[], q?: string, take = 100) {
   const search = q?.trim();
+  const privacy = await visibleActivityWhere(user);
   return db.activity.findMany({
     where: {
+      AND: [privacy],
       type: { in: types },
       lead: leadScope(user),
       ...(search ? { OR: [{ summary: { contains: search, mode: "insensitive" } }, { subject: { contains: search, mode: "insensitive" } }, { lead: { company: { contains: search, mode: "insensitive" } } }] } : {}),

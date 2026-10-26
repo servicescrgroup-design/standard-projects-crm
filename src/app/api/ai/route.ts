@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentUser } from "@/lib/server/session";
 import { db } from "@/lib/server/db";
 import { leadScope } from "@/lib/access";
+import { visibleActivityWhere } from "@/lib/server/activityPrivacy";
 import { OPEN_STAGES, STAGE_LABELS, formatMoney, type Stage } from "@/lib/domain";
 import { QUEUE_SELECT, buildQueue } from "@/lib/queue";
 
@@ -25,7 +26,7 @@ async function crmSnapshot(user: { id: string; name: string; role: string; teamI
       select: { ...QUEUE_SELECT, company: true, segment: true, contactName: true, phone: true, whyFit: true },
     }),
     db.activity.findMany({
-      where: { lead: scope },
+      where: { AND: [{ lead: scope }, await visibleActivityWhere(user)] },
       orderBy: { occurredAt: "desc" },
       take: 40,
       select: { type: true, outcome: true, summary: true, occurredAt: true, lead: { select: { company: true } }, user: { select: { name: true } } },

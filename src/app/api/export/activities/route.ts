@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/server/session";
+import { visibleActivityWhere } from "@/lib/server/activityPrivacy";
 import { db } from "@/lib/server/db";
 import { leadScope } from "@/lib/access";
 import { toCsv } from "@/lib/csv";
@@ -8,7 +9,7 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user) return new Response("Please sign in", { status: 401 });
   const rows = await db.activity.findMany({
-    where: { lead: leadScope(user) },
+    where: { AND: [{ lead: leadScope(user) }, await visibleActivityWhere(user)] },
     include: { lead: { select: { company: true } }, user: { select: { name: true } } },
     orderBy: { occurredAt: "desc" },
     take: 20000,
