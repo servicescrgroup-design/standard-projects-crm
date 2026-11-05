@@ -31,5 +31,18 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/((?!api/).*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "standard-projects-crm.vercel.app"
+        }
+      ],
+      "destination": "https://standardprojectscrm.com/$1",
+      "permanent": false
+    }
   ]
 }
