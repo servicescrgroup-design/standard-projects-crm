@@ -1,5 +1,6 @@
 "use client";
 
+import { COUNTRY_LIST } from "@/lib/countries";
 import { Select } from "@/components/ui/Select";
 import { useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
@@ -10,6 +11,7 @@ import {
   deleteTeam,
   removePerson,
   renameTeam,
+  setTerritory,
   updatePerson,
   type FormResult,
 } from "@/app/actions";
@@ -23,11 +25,13 @@ type Person = {
   teamId: string | null;
   openLeads: number;
   hasPassword: boolean;
+  allowedCountries: string[];
+  allowedCompanies: string[];
 };
 
 const ROLE_OPTIONS = [
-  { value: "REP", label: "Sales rep (own leads only)" },
-  { value: "TEAM_LEAD", label: "Team lead (their team)" },
+  { value: "REP", label: "Sales rep (their territory)" },
+  { value: "TEAM_LEAD", label: "Team lead (their territory)" },
   { value: "OWNER", label: "Owner (everything)" },
 ];
 
@@ -154,6 +158,7 @@ export function PersonRow({ person, teams, isMe }: { person: Person; teams: Team
   const [updateState, update] = useActionState(updatePerson, {});
   const [removeState, remove] = useActionState(removePerson, {});
   const [linkState, makeLink] = useActionState(createSignInLink, {});
+  const [territoryState, saveTerritory] = useActionState(setTerritory, {});
   const updateRef = useRef<HTMLFormElement>(null);
   // A rejected change (e.g. demoting the last owner) snaps the dropdowns back to the saved values.
   useEffect(() => {
@@ -196,6 +201,31 @@ export function PersonRow({ person, teams, isMe }: { person: Person; teams: Team
           </form>
         )}
       </div>
+      {person.role !== "OWNER" && (
+        <details className="mt-2 text-sm">
+          <summary className="cursor-pointer text-ink-3">
+            Territory: {person.allowedCountries.length + person.allowedCompanies.length === 0 ? "none (own leads only)" : `${person.allowedCountries.length} countries, ${person.allowedCompanies.length} companies`}
+          </summary>
+          <form action={saveTerritory} className="mt-2 space-y-3">
+            <input type="hidden" name="userId" value={person.id} />
+            <p className="text-xs text-ink-3">{person.name} sees only leads in these countries or companies, plus leads they own. Owners always see everything.</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3 lg:grid-cols-4">
+              {COUNTRY_LIST.map((c) => (
+                <label key={c.code} className="flex items-center gap-2">
+                  <input type="checkbox" name="countries" value={c.code} defaultChecked={person.allowedCountries.includes(c.code)} />
+                  {c.flag} {c.name}
+                </label>
+              ))}
+            </div>
+            <label className="block">
+              <span className="text-xs text-ink-3">Companies (one per line, exact company name)</span>
+              <textarea name="companies" rows={3} className="input mt-1 w-full" defaultValue={person.allowedCompanies.join("\n")} />
+            </label>
+            <Submit className="btn-ghost">Save territory</Submit>
+          </form>
+          <Message state={territoryState} />
+        </details>
+      )}
       <Message state={updateState} />
       <Message state={removeState} />
       <Message state={linkState} />

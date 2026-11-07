@@ -51,9 +51,10 @@ export function leadWhere(user: Viewer, p: LeadFilterParams): Prisma.LeadWhereIn
 
 // Every visible lead's id + detected country, read once per request. Country isn't a column: it's worked out
 // from location, industry notes, phone and Thai place names (countryOfLead), so the filter and the flags agree.
-const countryIndex = cache(async (userId: string, role: string, teamId: string | null) => {
+const countryIndex = cache(async (userId: string, role: string, teamId: string | null, territory: string) => {
+  const [allowedCountries, allowedCompanies] = JSON.parse(territory) as [string[], string[]];
   const rows = await db.lead.findMany({
-    where: leadScope({ id: userId, role, teamId }),
+    where: leadScope({ id: userId, role, teamId, allowedCountries, allowedCompanies }),
     select: { id: true, location: true, industry: true, phone: true, company: true },
   });
   return rows.map((r) => ({ id: r.id, country: countryOfLead(r) }));
@@ -64,7 +65,7 @@ export async function leadWhereWithCountry(user: Viewer, p: LeadFilterParams): P
   const base = leadWhere(user, p);
   const countries = listParam(p.country);
   if (!countries.length) return base;
-  const index = await countryIndex(user.id, String(user.role), user.teamId);
+  const index = await countryIndex(user.id, String(user.role), user.teamId, JSON.stringify([user.allowedCountries ?? [], user.allowedCompanies ?? []]));
   const ids = index.filter((r) => r.country && countries.includes(r.country.name)).map((r) => r.id);
   return { AND: [base, { id: { in: ids } }] };
 }
@@ -74,7 +75,7 @@ export type Facets = { countries: { name: string; flag: string; count: number }[
 /** Country and industry options (with counts) for the filter menus, over the leads this viewer can see. */
 export async function leadFacets(user: Viewer): Promise<Facets> {
   const [index, segs] = await Promise.all([
-    countryIndex(user.id, String(user.role), user.teamId),
+    countryIndex(user.id, String(user.role), user.teamId, JSON.stringify([user.allowedCountries ?? [], user.allowedCompanies ?? []])),
     db.lead.groupBy({ by: ["segment"], where: leadScope(user), _count: { _all: true } }),
   ]);
   const countries = new Map<string, { name: string; flag: string; count: number }>();

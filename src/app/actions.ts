@@ -21,6 +21,7 @@ import { publicBase } from "@/lib/server/quotes";
 import { notify } from "@/lib/server/notifications";
 import { sanitizeLayout } from "@/lib/analytics";
 import { sanitizeConfig } from "@/lib/reports";
+import { COUNTRY_LIST } from "@/lib/countries";
 import { canAssignTo, canManageGoals, canManagePeople, canSeeLead, wouldLeaveNoOwner } from "@/lib/access";
 import {
   CLOSED_STAGES,
@@ -369,6 +370,21 @@ export async function updatePerson(_prev: FormResult, fd: FormData): Promise<For
   if (teamId === undefined) return { error: "That team no longer exists" };
   await db.user.update({ where: { id }, data: { role, teamId } });
   revalidatePeople();
+  return { ok: true };
+}
+
+/** Owner sets which countries and companies a team lead or rep may see (plus their own leads). */
+export async function setTerritory(_prev: FormResult, fd: FormData): Promise<FormResult> {
+  await requireOwner();
+  const id = str(fd, "userId");
+  const person = await db.user.findUnique({ where: { id }, select: { id: true } });
+  if (!person) return { error: "Person not found" };
+  const known = new Set(COUNTRY_LIST.map((c) => c.code));
+  const countries = [...new Set(fd.getAll("countries").map(String))].filter((c) => known.has(c));
+  const companies = [...new Set(str(fd, "companies").split(/\r?\n|;/).map((c) => c.trim()).filter(Boolean))].slice(0, 200);
+  await db.user.update({ where: { id }, data: { allowedCountries: countries, allowedCompanies: companies } });
+  revalidatePeople();
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 

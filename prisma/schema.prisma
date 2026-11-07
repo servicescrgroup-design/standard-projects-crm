@@ -19,25 +19,29 @@ model Team {
 }
 
 model User {
-  id            String            @id @default(cuid())
-  name          String
-  email         String            @unique
-  role          String // OWNER | TEAM_LEAD | REP
-  teamId        String?
-  team          Team?             @relation(fields: [teamId], references: [id])
-  leads         Lead[]
-  activities    Activity[]
-  goals         Goal[]
-  invites       Invite[]
-  reports       Report[]
-  mailboxes     Mailbox[]
-  twilio        TwilioConnection?
-  notifications Notification[]
-  emailDrafts   EmailDraft[]
-  passwordHash  String? // null until the person sets a password via their invite link
-  preferences   Json              @default("{}") // per-user UI settings, e.g. dashboard widget order
-  createdAt     DateTime          @default(now())
-  demosAssigned DemoProject[]     @relation("DemoAssignee")
+  id               String            @id @default(cuid())
+  name             String
+  email            String            @unique
+  role             String // OWNER | TEAM_LEAD | REP
+  teamId           String?
+  team             Team?             @relation(fields: [teamId], references: [id])
+  leads            Lead[]
+  activities       Activity[]
+  goals            Goal[]
+  invites          Invite[]
+  reports          Report[]
+  mailboxes        Mailbox[]
+  twilio           TwilioConnection?
+  notifications    Notification[]
+  emailDrafts      EmailDraft[]
+  passwordHash     String? // null until the person sets a password via their invite link
+  preferences      Json              @default("{}") // per-user UI settings, e.g. dashboard widget order
+  /// Territory set by the owner. Team leads and reps see only leads in these countries (ISO codes) or
+  /// for these companies (names), plus leads they own. Owners ignore it. Empty = own leads only.
+  allowedCountries String[]          @default([])
+  allowedCompanies String[]          @default([])
+  createdAt        DateTime          @default(now())
+  demosAssigned    DemoProject[]     @relation("DemoAssignee")
 }
 
 /**
@@ -72,6 +76,8 @@ model Lead {
   phone             String?
   website           String?
   location          String?
+  /// ISO code worked out by countryOfLead() and kept in step on every write (see src/lib/server/db.ts); used for territory access.
+  country           String?
   industry          String?
   serviceInterest   String?
   source            String               @default("MANUAL") // see SOURCES in src/lib/domain.ts
@@ -124,6 +130,7 @@ model Lead {
   @@index([stage])
   @@index([priority])
   @@index([segment])
+  @@index([country])
   @@index([ownerId, stage])
   @@index([nextFollowUpAt])
 }

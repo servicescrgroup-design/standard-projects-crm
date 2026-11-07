@@ -156,7 +156,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               key={p.id}
               isMe={p.id === user.id}
               teams={teams}
-              person={{ id: p.id, name: p.name, email: p.email, role: p.role, teamId: p.teamId, openLeads: p._count.leads, hasPassword: !!p.passwordHash }}
+              person={{ id: p.id, name: p.name, email: p.email, role: p.role, teamId: p.teamId, openLeads: p._count.leads, hasPassword: !!p.passwordHash, allowedCountries: p.allowedCountries, allowedCompanies: p.allowedCompanies }}
             />
           ))}
         </ul>

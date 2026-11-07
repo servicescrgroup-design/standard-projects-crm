@@ -12,7 +12,8 @@
     "db:seed": "prisma db seed",
     "setup": "prisma migrate deploy && prisma db seed",
     "db:demo": "tsx prisma/demo.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:backfill-country": "tsx scripts/backfill-lead-country.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

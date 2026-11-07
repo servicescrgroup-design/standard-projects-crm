@@ -21,18 +21,36 @@ describe("access", () => {
     expect(teamScope(owner)).toEqual({});
   });
 
-  it("rep sees only their own leads", () => {
+  it("rep with no territory sees only their own leads", () => {
     expect(leadScope(rep)).toEqual({ ownerId: "r" });
     expect(canSeeLead(rep, { ownerId: "r" })).toBe(true);
-    expect(canSeeLead(rep, { ownerId: null })).toBe(false);
+    expect(canSeeLead(rep, { ownerId: null, country: "TH", company: "Acme" })).toBe(false);
     expect(canSeeLead(rep, { ownerId: "y", owner: { teamId: "t1" } })).toBe(false);
     expect(teamScope(rep)).toEqual({ id: "r" });
   });
 
-  it("team lead sees their team and the unassigned pool", () => {
-    expect(canSeeLead(lead, { ownerId: "r", owner: { teamId: "t1" } })).toBe(true);
-    expect(canSeeLead(lead, { ownerId: null })).toBe(true);
-    expect(canSeeLead(lead, { ownerId: "x", owner: { teamId: "t2" } })).toBe(false);
+  it("team lead sees only their territory and own leads, not the whole team or the unassigned pool", () => {
+    expect(leadScope(lead)).toEqual({ ownerId: "tl" });
+    expect(canSeeLead(lead, { ownerId: "r", owner: { teamId: "t1" } })).toBe(false);
+    expect(canSeeLead(lead, { ownerId: null })).toBe(false);
+  });
+
+  it("assigned countries and companies open up exactly those leads", () => {
+    const sales = { ...rep, allowedCountries: ["TH", "DE"], allowedCompanies: ["Acme Ltd"] };
+    expect(leadScope(sales)).toEqual({
+      OR: [{ ownerId: "r" }, { country: { in: ["TH", "DE"] } }, { company: { equals: "Acme Ltd", mode: "insensitive" } }],
+    });
+    expect(canSeeLead(sales, { ownerId: "y", country: "DE" })).toBe(true);
+    expect(canSeeLead(sales, { ownerId: null, country: "TH" })).toBe(true);
+    expect(canSeeLead(sales, { ownerId: "y", country: "US" })).toBe(false);
+    expect(canSeeLead(sales, { ownerId: "y", country: null })).toBe(false);
+    expect(canSeeLead(sales, { ownerId: "y", country: "US", company: " acme ltd " })).toBe(true);
+    expect(canSeeLead(sales, { ownerId: "y", country: "US", company: "Acme Ltd 2" })).toBe(false);
+    expect(canSeeLead({ ...lead, allowedCountries: ["GB"] }, { ownerId: "x", country: "GB" })).toBe(true);
+  });
+
+  it("the owner ignores territories", () => {
+    expect(leadScope({ ...owner, allowedCountries: ["TH"] })).toEqual({});
   });
 
   it("only owners and team leads can assign, team leads within their team", () => {
