@@ -1,31 +1,39 @@
 import type { Prisma } from "@prisma/client";
 import type { Role } from "./domain";
 
-export type Viewer = { id: string; role: Role | string; teamId: string | null };
-type LeadOwnerInfo = { ownerId: string | null; owner?: { teamId: string | null } | null };
+export type Viewer = {
+  id: string;
+  role: Role | string;
+  teamId: string | null;
+  /** Territory the owner assigned: ISO country codes and company names. */
+  allowedCountries?: string[];
+  allowedCompanies?: string[];
+};
+type LeadOwnerInfo = { ownerId: string | null; owner?: { teamId: string | null } | null; country?: string | null; company?: string | null };
+
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 /**
  * Who sees which leads:
  *  - OWNER sees everything.
- *  - TEAM_LEAD sees leads owned by their team, plus unassigned leads (so they can hand them out).
- *  - REP sees only leads they own.
+ *  - TEAM_LEAD and REP see only leads the owner gave them as a territory (their assigned countries or
+ *    companies) plus leads they own. With no territory assigned they see only their own leads.
  */
 export function leadScope(viewer: Viewer): Prisma.LeadWhereInput {
   if (viewer.role === "OWNER") return {};
-  if (viewer.role === "TEAM_LEAD") {
-    if (!viewer.teamId) return { OR: [{ ownerId: viewer.id }, { ownerId: null }] };
-    return { OR: [{ owner: { teamId: viewer.teamId } }, { ownerId: null }] };
-  }
-  return { ownerId: viewer.id };
+  const or: Prisma.LeadWhereInput[] = [{ ownerId: viewer.id }];
+  const countries = viewer.allowedCountries ?? [];
+  const companies = viewer.allowedCompanies ?? [];
+  if (countries.length) or.push({ country: { in: countries } });
+  for (const c of companies) or.push({ company: { equals: c.trim(), mode: "insensitive" } });
+  return or.length === 1 ? or[0] : { OR: or };
 }
 
 export function canSeeLead(viewer: Viewer, lead: LeadOwnerInfo): boolean {
   if (viewer.role === "OWNER") return true;
   if (lead.ownerId === viewer.id) return true;
-  if (viewer.role === "TEAM_LEAD") {
-    if (lead.ownerId === null) return true;
-    return !!viewer.teamId && lead.owner?.teamId === viewer.teamId;
-  }
+  if (lead.country && (viewer.allowedCountries ?? []).includes(lead.country)) return true;
+  if (lead.company && (viewer.allowedCompanies ?? []).some((c) => sameName(c, lead.company!))) return true;
   return false;
 }
 
