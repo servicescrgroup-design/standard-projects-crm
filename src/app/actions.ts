@@ -19,6 +19,7 @@ import { logActivity } from "@/lib/server/activities";
 import { markDemosWon } from "@/lib/server/demos";
 import { publicBase } from "@/lib/server/quotes";
 import { notify } from "@/lib/server/notifications";
+import { leadWhereWithCountry, type LeadFilterParams } from "@/lib/server/leadFilters";
 import { sanitizeLayout } from "@/lib/analytics";
 import { sanitizeConfig } from "@/lib/reports";
 import { COUNTRY_LIST } from "@/lib/countries";
@@ -412,13 +413,16 @@ export async function createSignInLink(_prev: FormResult, fd: FormData): Promise
   return { ok: true, link: await inviteLink(person.id), linkFor: person.name };
 }
 
+/** Most leads one bulk action (assign, delete) touches. */
+const MAX_BULK = 10_000;
+
 /** Owners and team leads hand out leads in bulk (e.g. 50 priority-A spa leads to one rep). */
 export async function assignLeads(_prev: FormResult, fd: FormData): Promise<FormResult> {
   const user = await requireUser();
   if (user.role === "REP") return { error: "Only owners and team leads can assign leads" };
-  const ids = fd.getAll("leadIds").map(String).filter(Boolean);
+  const ids = [...new Set(fd.getAll("leadIds").flatMap((v) => String(v).split(",")).filter(Boolean))];
   if (ids.length === 0) return { error: "Tick at least one lead first" };
-  if (ids.length > 500) return { error: "Assign at most 500 leads at a time" };
+  if (ids.length > MAX_BULK) return { error: `Assign at most ${MAX_BULK.toLocaleString("en-GB")} leads at a time` };
 
   const requested = str(fd, "ownerId");
   const assignee = requested ? await db.user.findUnique({ where: { id: requested } }) : null;
@@ -428,12 +432,42 @@ export async function assignLeads(_prev: FormResult, fd: FormData): Promise<Form
   // Only leads this person can see are touched, whatever was posted.
   const leads = await db.lead.findMany({ where: { id: { in: ids } }, include: { owner: true } });
   const allowed = leads.filter((l) => canSeeLead(user, l)).map((l) => l.id);
-  const { count } = await db.lead.updateMany({ where: { id: { in: allowed } }, data: { ownerId: assignee?.id ?? null, assignedAt: assignee ? new Date() : null } });
+  let count = 0;
+  for (let i = 0; i < allowed.length; i += 1000) {
+    count += (await db.lead.updateMany({ where: { id: { in: allowed.slice(i, i + 1000) } }, data: { ownerId: assignee?.id ?? null, assignedAt: assignee ? new Date() : null } })).count;
+  }
   if (assignee && assignee.id !== user.id && count > 0) {
     await notify(assignee.id, { type: "LEAD_ASSIGNED", title: `${user.name} assigned ${count} lead${count === 1 ? "" : "s"} to you`, href: "/leads" });
   }
   revalidateAll();
   return { ok: true, message: `${count} lead${count === 1 ? "" : "s"} ${assignee ? `assigned to ${assignee.name}` : "moved to unassigned"}` };
+}
+
+/** Every lead matching the current Companies/Contacts filters (not just the page on screen), for "Select all". */
+export async function matchingLeadIds(filters: LeadFilterParams): Promise<{ ids?: string[]; error?: string }> {
+  const user = await requireUser();
+  if (user.role === "REP") return { error: "Only owners and team leads can select in bulk" };
+  const clean: LeadFilterParams = {};
+  for (const k of ["q", "stage", "status", "owner", "priority", "source", "segment", "country"] as const) {
+    if (typeof filters[k] === "string" && filters[k]) clean[k] = filters[k];
+  }
+  const rows = await db.lead.findMany({ where: await leadWhereWithCountry(user, clean), select: { id: true }, take: MAX_BULK + 1 });
+  if (rows.length > MAX_BULK) return { error: `More than ${MAX_BULK.toLocaleString("en-GB")} match. Narrow the filter first.` };
+  return { ids: rows.map((r) => r.id) };
+}
+
+/** Owner only: permanently deletes the ticked leads with their emails, notes, quotes and demos. */
+export async function deleteLeads(leadIds: string[]): Promise<FormResult> {
+  const user = await requireUser();
+  if (user.role !== "OWNER") return { error: "Only the owner can delete leads" };
+  const ids = [...new Set(leadIds.map(String).filter(Boolean))];
+  if (ids.length === 0) return { error: "Tick at least one lead first" };
+  if (ids.length > MAX_BULK) return { error: `Delete at most ${MAX_BULK.toLocaleString("en-GB")} leads at a time` };
+  let count = 0;
+  for (let i = 0; i < ids.length; i += 1000) count += (await db.lead.deleteMany({ where: { id: { in: ids.slice(i, i + 1000) } } })).count;
+  revalidateAll();
+  revalidatePath("/companies");
+  return { ok: true, message: `${count.toLocaleString("en-GB")} lead${count === 1 ? "" : "s"} deleted` };
 }
 
 /** Saves this user's dashboard widget order and visibility (validated server-side). */

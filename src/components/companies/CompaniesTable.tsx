@@ -2,10 +2,12 @@
 
 import { Select } from "@/components/ui/Select";
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
-import { ArrowDown, ArrowUp, ExternalLink } from "lucide-react";
-import { assignLeads } from "@/app/actions";
+import { ArrowDown, ArrowUp, ExternalLink, Trash2 } from "lucide-react";
+import { assignLeads, deleteLeads, matchingLeadIds } from "@/app/actions";
+import type { LeadFilterParams } from "@/lib/server/leadFilters";
 import { toast } from "@/components/ui/Toaster";
 import { AddToSequence } from "@/components/outreach/AddToSequence";
 
@@ -31,9 +33,20 @@ function Assign() {
   return <button className="btn-dark py-1.5" disabled={pending}>{pending ? "Assigning…" : "Assign"}</button>;
 }
 
-/** Companies list/gallery with selection and bulk assignment. Sorting and paging are links (URL state). */
-export function CompaniesTable({ rows, view, canAssign, people, sortHref, sort, dir, sequences = [] }: { rows: CompanyRow[]; view: "list" | "gallery"; canAssign: boolean; people: { id: string; name: string }[]; sortHref: Record<string, string>; sort: string; dir: "asc" | "desc"; sequences?: { id: string; name: string }[] }) {
+/**
+ * Companies list/gallery with selection and bulk assignment. Sorting and paging are links (URL state).
+ * "Select all N" reaches past the current page: it ticks every company matching the filters.
+ */
+export function CompaniesTable({ rows, view, canAssign, canDelete = false, total = rows.length, filters = {}, people, sortHref, sort, dir, sequences = [] }: {
+  rows: CompanyRow[]; view: "list" | "gallery"; canAssign: boolean; canDelete?: boolean; total?: number; filters?: LeadFilterParams;
+  people: { id: string; name: string }[]; sortHref: Record<string, string>; sort: string; dir: "asc" | "desc"; sequences?: { id: string; name: string }[];
+}) {
+  const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, startBusy] = useTransition();
+  // Filters changed: the old ticks no longer describe what's on screen.
+  const filterKey = JSON.stringify(filters);
+  useEffect(() => setSelected(new Set()), [filterKey]);
   const [state, action] = useActionState(assignLeads, {});
   useEffect(() => {
     if (state.message) {
@@ -43,6 +56,23 @@ export function CompaniesTable({ rows, view, canAssign, people, sortHref, sort, 
     if (state.error) toast(state.error, "error");
   }, [state]);
   const all = rows.length > 0 && rows.every((r) => selected.has(r.id));
+  const everything = selected.size >= total && total > 0;
+
+  const selectEverything = () =>
+    startBusy(async () => {
+      const r = await matchingLeadIds(filters);
+      if (r.error || !r.ids) return toast(r.error ?? "Couldn't select them", "error");
+      setSelected(new Set(r.ids));
+    });
+  const removeSelected = () => {
+    const n = selected.size;
+    if (!window.confirm(`Permanently delete ${n.toLocaleString("en-GB")} compan${n === 1 ? "y" : "ies"}, with their emails, notes, quotes and demos?\n\nThis can't be undone.`)) return;
+    startBusy(async () => {
+      const r = await deleteLeads([...selected]);
+      toast(r.error ?? r.message ?? "Done", r.error ? "error" : "ok");
+      if (!r.error) { setSelected(new Set()); router.refresh(); }
+    });
+  };
   const toggle = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const Th = ({ id, children, className = "" }: { id?: string; children: React.ReactNode; className?: string }) => (
@@ -58,13 +88,30 @@ export function CompaniesTable({ rows, view, canAssign, people, sortHref, sort, 
 
   const bulk = canAssign && selected.size > 0 && (
     <form action={action} className="flex flex-wrap items-center gap-2 border-b border-line bg-brand-50/60 px-4 py-2 text-sm">
-      {[...selected].map((id) => <input key={id} type="hidden" name="leadIds" value={id} />)}
-      <span className="font-medium">{selected.size} selected</span>
+      <input type="hidden" name="leadIds" value={[...selected].join(",")} />
+      <span className="font-medium">{selected.size.toLocaleString("en-GB")} selected</span>
       <span className="text-ink-2">→ assign to</span>
       <Select name="ownerId" ariaLabel="Assign to" defaultValue="" className="w-auto min-w-40 py-1.5" options={[{ value: "", label: "Unassigned" }, ...people.map((p) => ({ value: p.id, label: p.name }))]} />
       <Assign />
       <AddToSequence leadIds={[...selected]} sequences={sequences} onDone={() => setSelected(new Set())} />
+      {canDelete && (
+        <button type="button" className="btn text-rose-700 hover:bg-rose-50" disabled={busy} onClick={removeSelected}><Trash2 className="h-4 w-4" /> Delete</button>
+      )}
       <button type="button" className="btn text-ink-2 hover:bg-hover" onClick={() => setSelected(new Set())}>Clear</button>
+      {all && total > rows.length && (
+        <p className="basis-full text-ink-2">
+          {everything ? (
+            <>All <b>{total.toLocaleString("en-GB")}</b> companies matching your filters are selected.</>
+          ) : (
+            <>
+              All {rows.length} on this page are selected.{" "}
+              <button type="button" className="font-medium text-brand-700 underline" disabled={busy} onClick={selectEverything}>
+                {busy ? "Selecting…" : `Select all ${total.toLocaleString("en-GB")} matching companies`}
+              </button>
+            </>
+          )}
+        </p>
+      )}
     </form>
   );
 

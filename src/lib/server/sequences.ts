@@ -88,7 +88,7 @@ export type EnrollResult = { enrolled: number; pending: number; skippedNoEmail: 
 export async function enrollLeads(user: User, sequenceId: string, leadIds: string[], includeRestricted = false): Promise<EnrollResult> {
   const sequence = await db.sequence.findUnique({ where: { id: sequenceId }, include: { steps: { orderBy: { position: "asc" } } } });
   if (!sequence || !sequence.active || sequence.steps.length === 0) throw new Error("That sequence has no emails yet");
-  const ids = [...new Set(leadIds)].slice(0, 1000);
+  const ids = [...new Set(leadIds)].slice(0, 10_000);
   const leads = await db.lead.findMany({
     where: { AND: [{ id: { in: ids } }, leadScope(user)] },
     select: {
