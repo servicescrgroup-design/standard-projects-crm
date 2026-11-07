@@ -8,9 +8,9 @@ import { toast } from "@/components/ui/Toaster";
 type Box = { provider: string; address: string; status: string; lastError: string | null; lastSyncAt: string | null };
 type Provider = "GMAIL" | "OUTLOOK";
 
-const NAMES: Record<Provider, string> = { GMAIL: "Gmail", OUTLOOK: "Outlook" };
+export const NAMES: Record<Provider, string> = { GMAIL: "Gmail", OUTLOOK: "Outlook" };
 
-const STATUS: Record<string, [string, "ok" | "error"]> = {
+export const STATUS: Record<string, [string, "ok" | "error"]> = {
   "connected-gmail": ["Gmail connected. New emails with your leads will appear within 10 minutes.", "ok"],
   "connected-outlook": ["Outlook connected. New emails with your leads will appear within 10 minutes.", "ok"],
   cancelled: ["Connection cancelled.", "error"],

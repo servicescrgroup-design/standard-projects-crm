@@ -31,10 +31,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
     return NextResponse.redirect(`${origin}/settings?email=use-live-site#email`);
   }
 
+  // Where to land afterwards: back on the Emails page when connected from there, otherwise Settings.
+  const back = new URL(req.url).searchParams.get("back") === "emails" ? "emails" : "settings";
   await logConnect({ step: "start", outcome: "sent-to-provider", ...who, detail: `redirect_uri=${redirectUriFor(origin, provider)}` });
   const { verifier, challenge, state } = newPkce();
   const res = NextResponse.redirect(authorizeUrl(provider, redirectUriFor(origin, provider), state, challenge, user.email));
-  res.cookies.set(OAUTH_COOKIE, signPayload({ state, verifier, provider, userId: user.id, exp: Date.now() + 10 * 60_000 }), {
+  res.cookies.set(OAUTH_COOKIE, signPayload({ state, verifier, provider, userId: user.id, back, exp: Date.now() + 10 * 60_000 }), {
     httpOnly: true,
     secure: origin.startsWith("https"),
     sameSite: "lax",

@@ -8,12 +8,14 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { SearchBox } from "@/components/SearchBox";
 import { DraftButtons } from "@/components/email/EmailComposer";
 import { EnrollmentApprovals } from "@/components/outreach/EnrollmentApprovals";
+import { MailboxBar } from "@/components/email/MailboxBar";
+import { isProviderConfigured } from "@/lib/mail/oauth";
 
 export const dynamic = "force-dynamic";
 
-export default async function EmailsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default async function EmailsPage({ searchParams }: { searchParams: Promise<{ q?: string; email?: string }> }) {
   const user = await requireUser();
-  const { q } = await searchParams;
+  const { q, email } = await searchParams;
   const canSend = canSendEmail(user);
   const [emails, awaiting, mailboxes] = await Promise.all([
     scopedActivities(user, ["EMAIL_OUT", "EMAIL_IN", "PROPOSAL"], q),
@@ -24,7 +26,7 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
       orderBy: { updatedAt: "desc" },
       take: 50,
     }),
-    db.mailbox.count({ where: { userId: user.id } }),
+    db.mailbox.findMany({ where: { userId: user.id }, select: { provider: true, address: true, status: true, lastSyncAt: true }, orderBy: { provider: "asc" } }),
   ]);
   const pendingEnrollments = canSend
     ? await db.sequenceEnrollment.findMany({
@@ -42,12 +44,15 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
         <p>
           Every email with your leads: synced from connected Gmail and Outlook mailboxes every 10 minutes, sent from the CRM, or logged by hand.
-          Mail that doesn&rsquo;t match a lead is never imported.{" "}
-          {mailboxes === 0 && (
-            <Link href="/settings#email" className="font-medium text-brand-700 underline">Connect your mailbox</Link>
-          )}
+          Mail that doesn&rsquo;t match a lead is never imported.
         </p>
       </div>
+
+      <MailboxBar
+        mailboxes={mailboxes.map((m) => ({ ...m, lastSyncAt: m.lastSyncAt?.toISOString() ?? null }))}
+        configured={{ GMAIL: isProviderConfigured("GMAIL"), OUTLOOK: isProviderConfigured("OUTLOOK") }}
+        status={email ?? null}
+      />
 
       <EnrollmentApprovals
         rows={pendingEnrollments.map((e) => ({ id: e.id, company: e.lead.company, leadId: e.lead.id, email: e.lead.email, sequence: e.sequence.name, by: requesters.find((u) => u.id === e.enrolledById)?.name ?? "—" }))}

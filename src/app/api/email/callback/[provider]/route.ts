@@ -10,20 +10,19 @@ import { logConnect } from "@/lib/server/connectLog";
 
 export const dynamic = "force-dynamic";
 
-type OAuthState = { state: string; verifier: string; provider: MailProviderId; userId: string; exp: number };
+type OAuthState = { state: string; verifier: string; provider: MailProviderId; userId: string; back?: "emails" | "settings"; exp: number };
 
 /** Provider redirects back here. Verifies state, stores the encrypted refresh token, starts syncing from now. */
 export async function GET(req: Request, { params }: { params: Promise<{ provider: string }> }) {
   const origin = appOrigin(req);
-  const back = (status: string) => {
-    const res = NextResponse.redirect(`${origin}/settings?email=${status}#email`);
-    res.cookies.delete({ name: OAUTH_COOKIE, path: "/api/email/callback" });
-    return res;
-  };
-
   const url = new URL(req.url);
   const provider = providerFromSlug((await params).provider);
   const saved = readSignedPayload<OAuthState>((await cookies()).get(OAUTH_COOKIE)?.value);
+  const back = (status: string) => {
+    const res = NextResponse.redirect(saved?.back === "emails" ? `${origin}/emails?email=${status}` : `${origin}/settings?email=${status}#email`);
+    res.cookies.delete({ name: OAUTH_COOKIE, path: "/api/email/callback" });
+    return res;
+  };
   const user = await getCurrentUser();
   const who = { userId: user?.id ?? null, email: user?.email ?? null, provider, origin };
   if (!user) {
