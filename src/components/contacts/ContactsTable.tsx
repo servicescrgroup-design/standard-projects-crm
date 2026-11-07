@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Copy, Download, GripVertical, Mail, Pencil, Phone, RotateCcw } from "lucide-react";
+import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowDown, ArrowUp, Copy, Download, GripVertical, Mail, Pencil, Phone, RotateCcw, Trash2 } from "lucide-react";
+import { assignLeads, contactDetails, deleteLeads, matchingContactIds } from "@/app/actions";
+import { Select } from "@/components/ui/Select";
+import type { ContactFilterParams } from "@/lib/server/contactsFilter";
 import { toCsv } from "@/lib/csv";
 import { toast } from "@/components/ui/Toaster";
 import { AddToSequence } from "@/components/outreach/AddToSequence";
@@ -138,9 +142,25 @@ function Cell({ col, r }: { col: ColId; r: ContactRow }) {
   }
 }
 
-/** Contacts table: pinned company/contact, resizable and re-orderable columns, row selection with bulk export. */
-export function ContactsTable({ rows, sort, sortHref, sequences = [] }: { rows: ContactRow[]; sort: "company" | "recent"; sortHref: string; sequences?: { id: string; name: string }[] }) {
+/**
+ * Contacts table: pinned company/contact, resizable and re-orderable columns, row selection with bulk export,
+ * assign, sequence and (owner) delete. "Select all N" reaches every contact matching the filters, not just this page.
+ */
+export function ContactsTable({ rows, sort, sortHref, sequences = [], total = rows.length, filters = {}, canAssign = false, canDelete = false, people = [] }: {
+  rows: ContactRow[]; sort: "company" | "recent"; sortHref: string; sequences?: { id: string; name: string }[];
+  total?: number; filters?: ContactFilterParams; canAssign?: boolean; canDelete?: boolean; people?: { id: string; name: string }[];
+}) {
+  const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, startBusy] = useTransition();
+  const [assigned, assign] = useActionState(assignLeads, {});
+  useEffect(() => {
+    if (assigned.message) { toast(assigned.message); setSelected(new Set()); }
+    if (assigned.error) toast(assigned.error, "error");
+  }, [assigned]);
+  // Filters changed: the old ticks no longer describe what's on screen.
+  const filterKey = JSON.stringify(filters);
+  useEffect(() => setSelected(new Set()), [filterKey]);
   const [layout, setLayout] = useState<Layout>(DEFAULT_LAYOUT);
   const [dragging, setDragging] = useState<ColId | null>(null);
   const [dropBefore, setDropBefore] = useState<ColId | "end" | null>(null);
@@ -222,10 +242,33 @@ export function ContactsTable({ rows, sort, sortHref, sequences = [] }: { rows: 
     return n;
   });
   const toggleAll = () => setSelected(all ? new Set() : new Set(rows.map((r) => r.id)));
-  const exportSelected = () => {
+  const offPage = selected.size > chosen.length; // some ticks are on other pages
+  const everything = selected.size >= total && total > 0;
+  const selectEverything = () =>
+    startBusy(async () => {
+      const r = await matchingContactIds(filters);
+      if (r.error || !r.ids) return void toast(r.error ?? "Couldn't select them", "error");
+      setSelected(new Set(r.ids));
+    });
+  const removeSelected = () => {
+    const n = selected.size;
+    if (!window.confirm(`Permanently delete ${n.toLocaleString("en-GB")} compan${n === 1 ? "y" : "ies"} and their contacts, emails, notes, quotes and demos?\n\nThis can't be undone.`)) return;
+    startBusy(async () => {
+      const r = await deleteLeads([...selected]);
+      toast(r.error ?? r.message ?? "Done", r.error ? "error" : "ok");
+      if (!r.error) { setSelected(new Set()); router.refresh(); }
+    });
+  };
+  // Ticked contacts with their details: from the page when they're all here, otherwise from the server.
+  const details = async () =>
+    offPage
+      ? contactDetails([...selected])
+      : chosen.map((r) => ({ company: r.company, website: r.domain, contactName: r.contactName, email: r.email, phone: r.phone, country: r.country?.name ?? null, location: r.location, stage: r.stageLabel, owner: r.owner }));
+  const exportSelected = async () => {
+    const list = await details();
     const csv = toCsv(
       ["Company", "Website", "Contact", "Email", "Phone", "Country", "Location", "Stage", "Owner"],
-      chosen.map((r) => [r.company, r.domain, r.contactName, r.email, r.phone, r.country?.name, r.location, r.stageLabel, r.owner]),
+      list.map((r) => [r.company, r.website, r.contactName, r.email, r.phone, r.country, r.location, r.stage, r.owner]),
     );
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = Object.assign(document.createElement("a"), { href: url, download: `contacts-${new Date().toISOString().slice(0, 10)}.csv` });
@@ -233,7 +276,7 @@ export function ContactsTable({ rows, sort, sortHref, sequences = [] }: { rows: 
     URL.revokeObjectURL(url);
   };
   const copyEmails = async () => {
-    const emails = chosen.map((r) => r.email).filter(Boolean);
+    const emails = (await details()).map((r) => r.email).filter(Boolean);
     if (emails.length === 0) return toast("None of the selected contacts has an email", "error");
     await navigator.clipboard.writeText(emails.join(", "));
     toast(`${emails.length} email${emails.length === 1 ? "" : "s"} copied`, "ok");
@@ -305,17 +348,42 @@ export function ContactsTable({ rows, sort, sortHref, sequences = [] }: { rows: 
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-white">
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-5 py-2.5 text-sm">
-        {chosen.length > 0 ? (
+        {selected.size > 0 ? (
           <>
-            <span className="font-medium text-indigo-700">{chosen.length} selected</span>
+            <span className="font-medium text-indigo-700">{selected.size.toLocaleString("en-GB")} selected</span>
             <button type="button" onClick={exportSelected} className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-3 py-1.5 font-medium hover:bg-hover">
               <Download className="h-4 w-4" /> Export CSV
             </button>
             <button type="button" onClick={copyEmails} className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-3 py-1.5 font-medium hover:bg-hover">
               <Copy className="h-4 w-4" /> Copy emails
             </button>
-            <AddToSequence leadIds={chosen.map((r) => r.id)} sequences={sequences} onDone={() => setSelected(new Set())} />
+            {canAssign && (
+              <form action={assign} className="inline-flex items-center gap-2">
+                <input type="hidden" name="leadIds" value={[...selected].join(",")} />
+                <span className="text-ink-2">→ assign to</span>
+                <Select name="ownerId" ariaLabel="Assign to" defaultValue="" className="w-auto min-w-40 py-1.5" options={[{ value: "", label: "Unassigned" }, ...people.map((p) => ({ value: p.id, label: p.name }))]} />
+                <button className="btn-dark py-1.5">Assign</button>
+              </form>
+            )}
+            <AddToSequence leadIds={[...selected]} sequences={sequences} onDone={() => setSelected(new Set())} />
+            {canDelete && (
+              <button type="button" disabled={busy} onClick={removeSelected} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 font-medium text-rose-700 hover:bg-rose-50"><Trash2 className="h-4 w-4" /> Delete</button>
+            )}
             <button type="button" onClick={() => setSelected(new Set())} className="text-ink-2 hover:text-ink">Clear</button>
+            {all && total > rows.length && (
+              <p className="basis-full text-ink-2">
+                {everything ? (
+                  <>All <b>{total.toLocaleString("en-GB")}</b> contacts matching your filters are selected.</>
+                ) : (
+                  <>
+                    All {rows.length} on this page are selected.{" "}
+                    <button type="button" className="font-medium text-indigo-700 underline" disabled={busy} onClick={selectEverything}>
+                      {busy ? "Selecting…" : `Select all ${total.toLocaleString("en-GB")} matching contacts`}
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
           </>
         ) : (
           <span className="text-xs text-ink-3">Drag a column&rsquo;s edge to resize it, or drag its header to move it. Company and Contact stay pinned.</span>

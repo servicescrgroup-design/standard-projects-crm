@@ -10,6 +10,9 @@ import { QUEUE_SELECT, buildQueue } from "@/lib/queue";
 export const maxDuration = 60;
 
 const MODEL = "claude-opus-5-5";
+// Free option: Google's Gemini API (free tier, rate-limited). Used when there's no Claude key.
+// "gemini-flash-latest" follows Google's current Flash model; set GEMINI_MODEL to pin another one.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
 
 const SYSTEM = `You are the assistant inside the Standard Projects sales CRM (a Chiang Mai company that builds websites and business systems; money is in Thai baht).
 Answer the user's question using ONLY the CRM data provided in the <crm_data> block. That data is already limited to what this user is allowed to see.
@@ -66,9 +69,9 @@ export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.ANTHROPIC_API_KEY && !process.env.GEMINI_API_KEY) {
     return NextResponse.json(
-      { error: "not_connected", message: "Ask AI isn't connected yet. The owner can add an ANTHROPIC_API_KEY in Vercel to switch it on." },
+      { error: "not_connected", message: "Ask AI isn't connected yet. The owner can add a GEMINI_API_KEY (free) or ANTHROPIC_API_KEY in Vercel to switch it on." },
       { status: 503 },
     );
   }
@@ -78,6 +81,8 @@ export async function POST(req: Request) {
   if (!question) return NextResponse.json({ error: "Type a question first." }, { status: 400 });
 
   const snapshot = await crmSnapshot(user);
+  const prompt = `<crm_data>\n${JSON.stringify(snapshot)}\n</crm_data>\n\n${question}`;
+  if (!process.env.ANTHROPIC_API_KEY) return askGemini(prompt);
   const client = new Anthropic();
   try {
     const response = await client.beta.messages.create({
@@ -88,7 +93,7 @@ export async function POST(req: Request) {
       betas: ["server-side-fallback-2026-06-01"],
       fallbacks: [{ model: "claude-opus-4-8" }],
       system: SYSTEM,
-      messages: [{ role: "user", content: `<crm_data>\n${JSON.stringify(snapshot)}\n</crm_data>\n\n${question}` }],
+      messages: [{ role: "user", content: prompt }],
     });
     if (response.stop_reason === "refusal") {
       return NextResponse.json({ error: "The assistant couldn't help with that request." }, { status: 422 });
@@ -103,6 +108,39 @@ export async function POST(req: Request) {
     if (e instanceof Anthropic.AuthenticationError) return NextResponse.json({ error: "The AI key is invalid. Ask the owner to check it." }, { status: 502 });
     if (e instanceof Anthropic.RateLimitError) return NextResponse.json({ error: "The assistant is busy. Try again in a minute." }, { status: 429 });
     if (e instanceof Anthropic.APIError) return NextResponse.json({ error: `The assistant failed (${e.status}).` }, { status: 502 });
+    return NextResponse.json({ error: "Couldn't reach the assistant. Check your connection." }, { status: 502 });
+  }
+}
+
+/** Same question through Gemini's REST API (no SDK needed). */
+async function askGemini(prompt: string) {
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY! },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM }] },
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 4000 },
+      }),
+    });
+    const data = (await res.json().catch(() => null)) as {
+      candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
+      promptFeedback?: { blockReason?: string };
+      modelVersion?: string;
+      error?: { message?: string };
+    } | null;
+    if (res.status === 400 || res.status === 403) {
+      console.error("[ask-ai] gemini", res.status, data?.error?.message);
+      return NextResponse.json({ error: "The Gemini key is invalid or not allowed. Ask the owner to check it." }, { status: 502 });
+    }
+    if (res.status === 404) return NextResponse.json({ error: `Gemini model "${GEMINI_MODEL}" wasn't found. The owner can set GEMINI_MODEL in Vercel.` }, { status: 502 });
+    if (res.status === 429) return NextResponse.json({ error: "The free AI limit is used up for now. Try again in a minute (or tomorrow if the daily limit is reached)." }, { status: 429 });
+    if (!res.ok) return NextResponse.json({ error: `The assistant failed (${res.status}).` }, { status: 502 });
+    if (data?.promptFeedback?.blockReason) return NextResponse.json({ error: "The assistant couldn't help with that request." }, { status: 422 });
+    const answer = (data?.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? "").join("").trim();
+    return NextResponse.json({ answer: answer || "No answer was returned.", model: data?.modelVersion ?? GEMINI_MODEL });
+  } catch {
     return NextResponse.json({ error: "Couldn't reach the assistant. Check your connection." }, { status: 502 });
   }
 }

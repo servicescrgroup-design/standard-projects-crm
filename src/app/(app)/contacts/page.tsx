@@ -3,8 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { ArrowDown, ArrowUp, Search, SlidersHorizontal, Upload, X } from "lucide-react";
 import { requireUser } from "@/lib/server/session";
 import { db } from "@/lib/server/db";
-import { leadScope } from "@/lib/access";
-import { leadWhere, leadWhereWithCountry } from "@/lib/server/leadFilters";
+import { canAssignTo, leadScope } from "@/lib/access";
+import { CONTACT_RANGES as RANGES, HAS_CONTACT, NO_CATEGORY, contactsWhere, listOf as list } from "@/lib/server/contactsFilter";
 import { DAY_MS, STAGES, STAGE_LABELS, isStage, type Stage } from "@/lib/domain";
 import { websiteDomain } from "@/lib/matching";
 import { pctChange } from "@/lib/analytics";
@@ -18,14 +18,6 @@ export const dynamic = "force-dynamic";
 type Params = { q?: string; cat?: string | string[]; country?: string | string[]; range?: string; stage?: string; email?: string; sort?: string; page?: string };
 
 const PAGE_SIZE = 25;
-const RANGES: Record<string, { label: string; days: number | null }> = {
-  all: { label: "All time", days: null },
-  "30": { label: "Last 30 days", days: 30 },
-  "7": { label: "Last 7 days", days: 7 },
-};
-const NO_CATEGORY = "Uncategorised";
-const list = (v: string | string[] | undefined) => (Array.isArray(v) ? v : v ? [v] : []).filter(Boolean);
-const HAS_CONTACT: Prisma.LeadWhereInput = { OR: [{ contactName: { not: null } }, { email: { not: null } }, { phone: { not: null } }] };
 
 function statusOf(stage: string): ContactRow["status"] {
   if (stage === "WON" || stage === "MAINTENANCE") return { label: "Customer", tone: "customer" };
@@ -56,19 +48,8 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
   const toggled = (arr: string[], v: string) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
   const scope: Prisma.LeadWhereInput = { AND: [leadScope(user), HAS_CONTACT] };
-  const filters: Prisma.LeadWhereInput[] = [leadWhere(user, { q: p.q, stage }), HAS_CONTACT];
-  if (cats.length) {
-    const named = cats.filter((c) => c !== NO_CATEGORY);
-    filters.push({ OR: [...(named.length ? [{ segment: { in: named } }] : []), ...(cats.includes(NO_CATEGORY) ? [{ segment: null }] : [])] });
-  }
-  if (countries.length) {
-    const byCountry = await leadWhereWithCountry(user, { country: countries.join(",") });
-    filters.push(byCountry);
-  }
-
-  if (RANGES[range].days) filters.push({ createdAt: { gte: new Date(now - RANGES[range].days! * DAY_MS) } });
-  if (emailOnly) filters.push({ email: { not: null } });
-  const where: Prisma.LeadWhereInput = { AND: filters };
+  const filterParams = { q: p.q, cat: cats, country: countries, range, stage, email: emailOnly ? "1" : undefined };
+  const where = await contactsWhere(user, filterParams, now);
 
   const [total, last30, prev30, withEmail, contactedThisWeek, segments, locations, matching] = await Promise.all([
     db.lead.count({ where: scope }),
@@ -261,7 +242,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
       </div>
 
       <div>
-        <ContactsTable sequences={await db.sequence.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } })} rows={rows} sort={sort} sortHref={href({ sort: sort === "company" ? "recent" : undefined })} />
+        <ContactsTable total={matching} filters={filterParams} canAssign={user.role !== "REP"} canDelete={user.role === "OWNER"} people={user.role === "REP" ? [] : (await db.user.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, teamId: true } })).filter((x) => canAssignTo(user, x)).map((x) => ({ id: x.id, name: x.name }))} sequences={await db.sequence.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } })} rows={rows} sort={sort} sortHref={href({ sort: sort === "company" ? "recent" : undefined })} />
         <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-line bg-white px-5 py-3">
           {page > 1 ? (
             <Link href={href({ page: String(page - 1) })} className="rounded-lg border border-line px-4 py-2 text-sm font-medium shadow-sm hover:bg-hover">Previous</Link>

@@ -20,10 +20,11 @@ import { markDemosWon } from "@/lib/server/demos";
 import { publicBase } from "@/lib/server/quotes";
 import { notify } from "@/lib/server/notifications";
 import { leadWhereWithCountry, type LeadFilterParams } from "@/lib/server/leadFilters";
+import { contactsWhere, type ContactFilterParams } from "@/lib/server/contactsFilter";
 import { sanitizeLayout } from "@/lib/analytics";
 import { sanitizeConfig } from "@/lib/reports";
-import { COUNTRY_LIST } from "@/lib/countries";
-import { canAssignTo, canManageGoals, canManagePeople, canSeeLead, wouldLeaveNoOwner } from "@/lib/access";
+import { COUNTRY_LIST, countryOfLead } from "@/lib/countries";
+import { canAssignTo, canManageGoals, canManagePeople, canSeeLead, leadScope, wouldLeaveNoOwner } from "@/lib/access";
 import {
   CLOSED_STAGES,
   DAY_MS,
@@ -36,6 +37,8 @@ import {
   isSource,
   isStage,
   SOURCE_LABELS,
+  STAGE_LABELS,
+  type Stage,
   toMinor,
   type GoalMetric,
   type GoalPeriod,
@@ -454,6 +457,32 @@ export async function matchingLeadIds(filters: LeadFilterParams): Promise<{ ids?
   const rows = await db.lead.findMany({ where: await leadWhereWithCountry(user, clean), select: { id: true }, take: MAX_BULK + 1 });
   if (rows.length > MAX_BULK) return { error: `More than ${MAX_BULK.toLocaleString("en-GB")} match. Narrow the filter first.` };
   return { ids: rows.map((r) => r.id) };
+}
+
+/** Every contact matching the Contacts page filters, for "Select all". */
+export async function matchingContactIds(filters: ContactFilterParams): Promise<{ ids?: string[]; error?: string }> {
+  const user = await requireUser();
+  const str1 = (v: unknown) => (typeof v === "string" ? v : undefined);
+  const strs = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : str1(v));
+  const clean: ContactFilterParams = { q: str1(filters.q), cat: strs(filters.cat), country: strs(filters.country), range: str1(filters.range), stage: str1(filters.stage), email: str1(filters.email) };
+  const rows = await db.lead.findMany({ where: await contactsWhere(user, clean), select: { id: true }, orderBy: { company: "asc" }, take: MAX_BULK + 1 });
+  if (rows.length > MAX_BULK) return { error: `More than ${MAX_BULK.toLocaleString("en-GB")} match. Narrow the filter first.` };
+  return { ids: rows.map((r) => r.id) };
+}
+
+/** Contact details for ticked leads beyond the page on screen (CSV export, copy emails). Only leads you can see. */
+export async function contactDetails(leadIds: string[]) {
+  const user = await requireUser();
+  const ids = [...new Set(leadIds.map(String))].slice(0, MAX_BULK);
+  const rows = await db.lead.findMany({
+    where: { AND: [leadScope(user), { id: { in: ids } }] },
+    orderBy: { company: "asc" },
+    select: { company: true, website: true, contactName: true, email: true, phone: true, location: true, industry: true, stage: true, owner: { select: { name: true } } },
+  });
+  return rows.map((l) => ({
+    company: l.company, website: l.website, contactName: l.contactName, email: l.email, phone: l.phone,
+    country: countryOfLead(l)?.name ?? null, location: l.location, stage: STAGE_LABELS[l.stage as Stage] ?? l.stage, owner: l.owner?.name ?? null,
+  }));
 }
 
 /** Owner only: permanently deletes the ticked leads with their emails, notes, quotes and demos. */
